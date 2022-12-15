@@ -1,6 +1,6 @@
 # Stable Diffusion on AMD using ONNX FP16
 
-This repository contains a conversion tool and instructions for setting up ONNX for use with AMD GPUs
+This repository contains a conversion tool and instructions to set up ONNX for use with AMD GPUs
 Focus is on getting the best result on Windows with ONNX Runtime DirectML
 
 It's fairly straightforward but:
