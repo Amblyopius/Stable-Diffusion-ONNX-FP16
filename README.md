@@ -93,7 +93,7 @@ python test-txt2img.py --model "sd2_1-fp16" --size 768
 ## FAQ
 ### Why are you using ORT Nightly?
 The release schedule for ONNX Runtime is quite long and as a result the speed difference between ORT Nightly and the official release is massive.
-While there's some risk there's a bug in ORT Nightly it is just not worth throwing away the performance benefit for the tiny additional guarantee you get from running the official release.
+While there's some risk there's a bug in ORT Nightly, it is just not worth throwing away the performance benefit for the tiny additional guarantee you get from running the official release.
 
 ### Do these models work with other ONNX DirectML based implementations?
 While not tested extensively: yes they should! The advantage is also that they are not full FP16, at the interface level they are the same as FP32 and hence completely valid drop in replacements.
