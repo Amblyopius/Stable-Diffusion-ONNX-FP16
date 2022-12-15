@@ -1,11 +1,15 @@
-# Stable Diffusion on AMD using ONNX FP16
+# Stable Diffusion on AMD using ONNX FP16 and DirectML
 
-This repository contains a conversion tool and instructions to set up Stable Diffusion with ONNX for use with AMD GPUs.  
-Focus is on getting the best result on Windows with ONNX Runtime DirectML
+This repository contains a conversion tool, some examples, and instructions on how to set up Stable Diffusion with ONNX models for use with AMD GPUs.
+This may work on other DirectML devices too but it's hard to predict if performance will be satisfactory.
 
-It's fairly straightforward but:
+This focuses specifically on making it easy to get FP16 models. When using FP16 the VRAM footprint is significantly reduced and inference speed goes up.
+
+It's all fairly straightforward but:
 - Best to be comfortable with command line
-- Best to be able to code basic stuff in Python as initially there'll be limited code provided here
+- Best to be able to code basic stuff in Python as initially there'll be limited code provided here and definitely no GUI.
+
+You can also use this to convert models to FP16 and then use them in any tool that allows you to load ONNX models.
 
 ## Set up
 
