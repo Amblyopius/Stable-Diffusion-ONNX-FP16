@@ -82,7 +82,7 @@ You should now have 2 near identical pictures. Note that there'll be differences
 Next let's try do 768x768. This requires your card to have enough VRAM but it does run fine on for example 12GB VRAM. Interested in feedback on how it does on 8GB!  
 First make sure you're back on the sd_env_conv environment and then do:
 ```
-python diffusers_to_onnx_optim-v2_0.py --model_path "stabilityai/stable-diffusion-2-1" --output_path "./sd2_1-fp16" --opset 15 --fp16
+python diffusers_to_onnx_optim.py --model_path "stabilityai/stable-diffusion-2-1" --output_path "./sd2_1-fp16" --fp16
 ```
 
 Here we aren't bothering with FP32 because it just requires too much VRAM. Once downloaded we'll just run our test again:
