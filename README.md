@@ -1,7 +1,7 @@
 # Stable Diffusion on AMD using ONNX FP16
 
 This repository contains a conversion tool and instructions to set up Stable Diffusion with ONNX for use with AMD GPUs.
-Focus is on getting the best result on Windows with ONNX Runtime DirectML
+  Focus is on getting the best result on Windows with ONNX Runtime DirectML
 
 It's fairly straightforward but:
 - Best to be comfortable with command line
@@ -10,12 +10,12 @@ It's fairly straightforward but:
 ## Set up
 
 First make sure you have Python 3.10 installed. You can get it here: https://www.python.org/downloads/
-**NOTE:** Don't install 3.11 just yet cause not every prerequisite will be available if you do!
+  **NOTE:** Don't install 3.11 just yet cause not every prerequisite will be available if you do!
 
 If you don't have git get it here: https://gitforwindows.org/
 
 Create a directory somewhere which can contain all your code.
-Open the commandline (Powershell or Command Prompt) and change into the directory you will use.
+  Open the commandline (Powershell or Command Prompt) and change into the directory you will use.
 
 Do the following:
 ```
@@ -28,7 +28,7 @@ pip install --index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_pa
 ```
 
 This will be your environment for when you're creating images.
-Now do:
+  Now do:
 ```
 sd_env\scripts\deactivate
 ```
@@ -48,8 +48,8 @@ Feel free to combine them if you know what you're doing.
 Download diffusers_to_onnx_optim.py from this repository and put it in your directory
 
 Now first make sure you have an account on https://huggingface.co/
-When you do make sure to create a token one https://huggingface.co/settings/tokens
-And then on the commandline login using following command
+  When you do make sure to create a token one https://huggingface.co/settings/tokens
+  And then on the commandline login using following command
 ```
 huggingface-cli
 ```
@@ -61,8 +61,8 @@ python diffusers_to_onnx_optim.py --model_path "stabilityai/stable-diffusion-2-1
 ```
 
 You now have 2 models. These are geared towards creating 512x512 images. Get test-txt2img-512.py from the repository.
-Your environment needs to be sd_env and not sd_env conv to run as otherwise you'll see poor performance.
-You can do this by having a second command line window open. Just remember activation is done like this:
+  Your environment needs to be sd_env and not sd_env conv to run as otherwise you'll see poor performance.
+  You can do this by having a second command line window open. Just remember activation is done like this:
 ```
 sd_env\scripts\activate
 ```
@@ -76,7 +76,7 @@ python test-txt2img.py --model "sd2_1base-fp16" --size 512
 You should now have 2 near identical pictures. Note that there'll be differences between FP32 and FP16. But FP16 should not be specifically worse than FP32.
 
 Next let's try do 768x768. This requires your card to have enough VRAM but it does run fine on for example 12GB VRAM. Interested in feedback on how it does on 8GB!
-First make sure you're back on the sd_env_conv environment and then do:
+  First make sure you're back on the sd_env_conv environment and then do:
 ```
 python diffusers_to_onnx_optim-v2_0.py --model_path "stabilityai/stable-diffusion-2-1" --output_path "./sd2_1-fp16" --opset 15 --fp16
 ```
