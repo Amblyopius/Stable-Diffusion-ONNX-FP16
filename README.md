@@ -16,7 +16,7 @@ You can also use this to convert models to FP16 and then use them in any tool th
 First make sure you have Python 3.10 installed. You can get it here: https://www.python.org/downloads/  
 **NOTE:** Don't install 3.11 just yet cause not every prerequisite will be available if you do!
 
-If you don't have git get it here: https://gitforwindows.org/
+If you don't have git, get it here: https://gitforwindows.org/
 
 Create a directory somewhere which can contain all your code.  
 Open the commandline (Powershell or Command Prompt) and change into the directory you will use.
