@@ -28,7 +28,7 @@ python -m venv sd_env
 sd_env\scripts\activate
 python -m pip install --upgrade pip
 pip install transformers diffusers torch ftfy spacy scipy
-pip install --index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ORT-Nightly/pypi/simple/ ort-nightly-directml
+pip install --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ORT-Nightly/pypi/simple/ ort-nightly-directml
 ```
 
 This will be your environment for when you're creating images.  
