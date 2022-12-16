@@ -101,3 +101,13 @@ While there's some risk there's a bug in ORT Nightly, it is just not worth throw
 While not tested extensively: yes they should! The advantage is also that they are not full FP16, at the interface level they are the same as FP32.
 They are completely valid drop in replacements and transparently run in FP16 on ORT DirectML.
 This makes it possible to run both FP16 and FP32 models with the exact same code.
+
+### Can I convert non-official models?
+Yes, as long as the models has the diffusers format too (not just ckpt). Some suggestions:
+- https://huggingface.co/wavymulder/Analog-Diffusion
+- https://huggingface.co/Linaqruf/anything-v3.0
+- https://huggingface.co/prompthero/openjourney
+
+### Does this work for inpainting / img2img?
+Yes, it has been tested on the inpainting models and it works fine. Just like with txt2img, replacement is transparent as the interface is FP32.
+Additional example scripts may be added in the future to demonstrate it in code.
