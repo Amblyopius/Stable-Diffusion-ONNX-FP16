@@ -17,6 +17,8 @@ import argparse
 import os.path
 # Numpy is used to provide a random generator
 import numpy
+# We need regular expressions support
+import re
 
 
 from diffusers import OnnxStableDiffusionPipeline
@@ -80,11 +82,13 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     
+    if match := re.search(r"([^/\\]*)[/\\]?$", args.model):
+        fmodel = match.group(1)
     generator=numpy.random
-    imgname="testpicture-"+args.model+"_"+str(args.size)+".png"
+    imgname="testpicture-"+fmodel+"_"+str(args.size)+".png"
     if args.seed is not None:
         generator.seed(args.seed)
-        imgname="testpicture-"+args.model+"_"+str(args.size)+"_seed"+str(args.seed)+".png"
+        imgname="testpicture-"+fmodel+"_"+str(args.size)+"_seed"+str(args.seed)+".png"
     
     if (os.path.isdir(args.model+"/unet")):
         height=args.size
