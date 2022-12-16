@@ -111,3 +111,11 @@ Yes, as long as the models has the diffusers format too (not just ckpt). Some su
 ### Does this work for inpainting / img2img?
 Yes, it has been tested on the inpainting models and it works fine. Just like with txt2img, replacement is transparent as the interface is FP32.
 Additional example scripts may be added in the future to demonstrate it in code.
+
+### This is still too slow / taxing on my VRAM
+Make sure to close as many applications as possible when running FP32 or 768x768 FP16 models.
+On my 6700XT I can do 768x768 at 1.2s/it but only if I close all applications.
+If I don't close enough applications, it very quickly goes beyond 2s/it.
+
+Also consider following https://github.com/nod-ai/SHARK which provides accelerated ML on AMD via MLIR/IREE.
+It (currently) lacks features and flexibility but it has faster and more VRAM efficient Stable Diffusion implementation than we can currently get on ONNX.
