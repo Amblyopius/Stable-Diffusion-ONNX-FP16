@@ -53,7 +53,7 @@ Feel free to combine them if you know what you're doing.
 Download diffusers_to_onnx_optim.py from this repository and put it in your directory
 
 Now first make sure you have an account on https://huggingface.co/  
-When you do make sure to create a token one https://huggingface.co/settings/tokens  
+When you do make sure to create a token on https://huggingface.co/settings/tokens  
 And then on the commandline login using following command
 ```
 huggingface-cli login
@@ -101,3 +101,21 @@ While there's some risk there's a bug in ORT Nightly, it is just not worth throw
 While not tested extensively: yes they should! The advantage is also that they are not full FP16, at the interface level they are the same as FP32.
 They are completely valid drop in replacements and transparently run in FP16 on ORT DirectML.
 This makes it possible to run both FP16 and FP32 models with the exact same code.
+
+### Can I convert non-official models?
+Yes, as long as the models have the diffusers format too (not just ckpt). Some suggestions:
+- https://huggingface.co/wavymulder/Analog-Diffusion
+- https://huggingface.co/Linaqruf/anything-v3.0
+- https://huggingface.co/prompthero/openjourney
+
+### Does this work for inpainting / img2img?
+Yes, it has been tested on the inpainting models and it works fine. Just like with txt2img, replacement is transparent as the interface is FP32.
+Additional example scripts may be added in the future to demonstrate it in code.
+
+### This is still too slow / taxing on my VRAM
+Make sure to close as many applications as possible when running FP32 or 768x768 FP16 models.
+On my 6700XT I can do 768x768 at 1.2s/it but only if I close all applications.
+If I don't close enough applications, it very quickly goes beyond 2s/it.
+
+Also consider following https://github.com/nod-ai/SHARK which provides accelerated ML on AMD via MLIR/IREE.
+It (currently) lacks features and flexibility but it has faster and more VRAM efficient Stable Diffusion implementation than we can currently get on ONNX.
