@@ -103,7 +103,7 @@ They are completely valid drop in replacements and transparently run in FP16 on 
 This makes it possible to run both FP16 and FP32 models with the exact same code.
 
 ### Can I convert non-official models?
-Yes, as long as the models has the diffusers format too (not just ckpt). Some suggestions:
+Yes, as long as the models have the diffusers format too (not just ckpt). Some suggestions:
 - https://huggingface.co/wavymulder/Analog-Diffusion
 - https://huggingface.co/Linaqruf/anything-v3.0
 - https://huggingface.co/prompthero/openjourney
