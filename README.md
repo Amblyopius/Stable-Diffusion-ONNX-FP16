@@ -119,3 +119,8 @@ If I don't close enough applications, it very quickly goes beyond 2s/it.
 
 Also consider following https://github.com/nod-ai/SHARK which provides accelerated ML on AMD via MLIR/IREE.
 It (currently) lacks features and flexibility but it has faster and more VRAM efficient Stable Diffusion implementation than we can currently get on ONNX.
+
+### Can you share any results?
+On my 6700XT I can get Stable Diffusion 2.1 768x768 down to 1.2s/it and 512x512 to 2.5it/s
+Reported working for Vega56 and doing 512x512 at 1.75it/s
+Reported working for RX 480 8GB and doing 512x512 a 1.75s/it
