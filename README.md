@@ -53,7 +53,7 @@ Feel free to combine them if you know what you're doing.
 Download diffusers_to_onnx_optim.py from this repository and put it in your directory
 
 Now first make sure you have an account on https://huggingface.co/  
-When you do make sure to create a token one https://huggingface.co/settings/tokens  
+When you do make sure to create a token on https://huggingface.co/settings/tokens  
 And then on the commandline login using following command
 ```
 huggingface-cli login
