@@ -125,3 +125,10 @@ On my 6700XT I can get Stable Diffusion 2.1 768x768 down to 1.2s/it and 512x512 
 Reported working for Vega56 and doing 512x512 at 1.75it/s  
 Reported working for RX 480 8GB and doing 512x512 at 1.75s/it  
 Reported working for 5600XT 6GB and doing 512x512 at 1.43s/it (about 4x times faster than using ONNX FP32)
+
+### All these model downloads seem to be eating my main drive's disk space?!
+This is an unfortunate side effect of where the huggingface library stores its cache by default.  
+On your main drive go to your users home directory (C:\users\...) and you'll find a .cache directory and in it a directory called huggingface.  
+Point an environment variable HF_HOME towards where you want to have it store things instead.  
+(You can probably move the existing directory to a different drive and point HF_HOME towards it but I have not tested this ...)
+
