@@ -123,5 +123,5 @@ It (currently) lacks features and flexibility but it has faster and more VRAM ef
 ### Can you share any results?
 On my 6700XT I can get Stable Diffusion 2.1 768x768 down to 1.2s/it and 512x512 to 2.5it/s  
 Reported working for Vega56 and doing 512x512 at 1.75it/s  
-Reported working for RX 480 8GB and doing 512x512 at 1.75s/it
+Reported working for RX 480 8GB and doing 512x512 at 1.75s/it  
 Reported working for 5600XT 6GB and doing 512x512 at 1.43s/it (about 4x times faster than using ONNX FP32)
