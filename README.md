@@ -130,5 +130,6 @@ Reported working for 5600XT 6GB and doing 512x512 at 1.43s/it (about 4x times fa
 This is an unfortunate side effect of where the huggingface library stores its cache by default.  
 On your main drive go to your users home directory (C:\users\...) and you'll find a .cache directory and in it a directory called huggingface.  
 Point an environment variable HF_HOME towards where you want to have it store things instead.  
-(You can probably move the existing directory to a different drive and point HF_HOME towards it but I have not tested this ...)
+(You can probably move the existing directory to a different drive and point HF_HOME towards it but I have not tested this ...)  
+Once resolved you can remove the huggingface directory from .cache
 
