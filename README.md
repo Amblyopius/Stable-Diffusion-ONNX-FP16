@@ -27,6 +27,7 @@ pip install virtualenv
 python -m venv sd_env
 sd_env\scripts\activate
 python -m pip install --upgrade pip
+pip install numpy==1.23.5
 pip install transformers diffusers torch ftfy spacy scipy
 pip install --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ORT-Nightly/pypi/simple/ ort-nightly-directml
 ```
@@ -42,6 +43,7 @@ And then:
 python -m venv sd_env_conv
 sd_env_conv\scripts\activate
 python -m pip install --upgrade pip
+pip install numpy==1.23.5
 pip install transformers diffusers torch ftfy spacy scipy
 pip install onnx onnxconverter_common onnxruntime-directml
 ```
