@@ -21,6 +21,7 @@
 # Version history
 # v1.2 First fully working version converting unet to fp16
 # v2.0 Refactored + enabled conversion to fp16 for Text Encoder
+# v2.1 Support for safetensors
 
 import argparse
 import os
@@ -29,6 +30,7 @@ from pathlib import Path
 
 import torch
 from torch.onnx import export
+import safetensors
 
 import onnx
 from onnxconverter_common import convert_float_to_float16
