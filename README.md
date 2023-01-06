@@ -44,7 +44,7 @@ python -m venv sd_env_conv
 sd_env_conv\scripts\activate
 python -m pip install --upgrade pip
 pip install numpy==1.23.5
-pip install transformers diffusers torch ftfy spacy scipy
+pip install transformers diffusers torch ftfy spacy scipy safetensors
 pip install onnx onnxconverter_common onnxruntime-directml
 ```
 
