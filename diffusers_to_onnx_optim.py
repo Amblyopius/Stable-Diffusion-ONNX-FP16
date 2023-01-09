@@ -22,11 +22,19 @@
 # v1.2 First fully working version converting unet to fp16
 # v2.0 Refactored + enabled conversion to fp16 for Text Encoder
 # v2.1 Support for safetensors
+# v2.2 Reduce visible warnings
 
 import argparse
 import os
 import shutil
 from pathlib import Path
+
+# To improve future development and testing, warnings should be limited to what is somewhat useful
+import warnings
+# Truncation warnings are expected as part of FP16 conversion and should not be shown
+warnings.filterwarnings('ignore','.*will be truncated.*')
+# We are ignoring prim::Constant type related warnings
+warnings.filterwarnings('ignore','.*The shape inference of prim::Constant type is missing.*')
 
 import torch
 from torch.onnx import export
