@@ -133,6 +133,11 @@ Yes, as long as the models have the diffusers format too (not just ckpt). Some s
 Yes, it has been tested on the inpainting models and it works fine. Just like with txt2img, replacement is transparent as the interface is FP32.
 Additional example scripts may be added in the future to demonstrate it in code.
 
+### Why is Euler Ancestral not giving me the same image if I provide a seed?
+Due to how Euler Ancestral works, it adds noise as part of the scheduler that is apparently non-deterministic when interacting with ONNX diffusers pipeline.
+A clean ONNX implementation without diffusers, torch ... would likely be faster and bug free but it's a lot of work and it would not match SHARK.  
+Best advice is to live with it and to switch to SHARK as soon as your wished for feature is available there. For more on SHARK see the next answer.
+
 ### This is still too slow / taxing on my VRAM
 Make sure to close as many applications as possible when running FP32 or 768x768 FP16 models.
 On my 6700XT I can do 768x768 at 1.2s/it but only if I close all applications.
