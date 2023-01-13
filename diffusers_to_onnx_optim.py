@@ -84,7 +84,7 @@ def convert_to_fp16(
     onnx.save(fp16_model, model_path)    
 
 @torch.no_grad()
-def convert_models(model_path: str, output_path: str, opset: int, fp16: bool = False):
+def convert_models(model_path: str, output_path: str, opset: int, fp16: bool):
     dtype=torch.float32
     device = "cpu"
     pipeline = StableDiffusionPipeline.from_pretrained(model_path, torch_dtype=dtype).to(device)
@@ -242,7 +242,12 @@ if __name__ == "__main__":
         help="Path to the `diffusers` checkpoint to convert (either a local directory or on the Hub).",
     )
 
-    parser.add_argument("--output_path", type=str, required=True, help="Path to the output model.")
+    parser.add_argument(
+        "--output_path",
+        type=str,
+        required=True,
+        help="Path to the output model."
+    )
 
     parser.add_argument(
         "--opset",
@@ -250,7 +255,12 @@ if __name__ == "__main__":
         type=int,
         help="The version of the ONNX operator set to use.",
     )
-    parser.add_argument("--fp16", action="store_true", default=False, help="Export Text Encoder and UNET in mixed `float16` mode")
+    
+    parser.add_argument(
+        "--fp16",
+        action="store_true",
+        help="Export Text Encoder and UNET in mixed `float16` mode"
+    )
 
     args = parser.parse_args()
 
