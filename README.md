@@ -126,7 +126,7 @@ python diffusers_to_onnx_optim.py --model_path "runwayml/stable-diffusion-v1-5" 
 This works as the VAE is specifically released seperately.  
 If you have a VAE locally on disk in diffusers format that you want to use, this can be done too. Say we have SD 2.1 Base downloaded and we want to use SD1.5 but with the VAE from SD 2.1 Base:
 ```
-python diffusers_to_onnx_optim.py --model_path "runwayml/stable-diffusion-v1-5" --output_path "./sd1_5-fp16-vae_2_1" --vae_path "stable-diffusion-2-1-base/vae" --fp16
+python diffusers_to_onnx_optim.py --model_path "runwayml/stable-diffusion-v1-5" --output_path "./model/sd1_5-fp16-vae_2_1" --vae_path "stable-diffusion-2-1-base/vae" --fp16
 ```
 
 ## FAQ
