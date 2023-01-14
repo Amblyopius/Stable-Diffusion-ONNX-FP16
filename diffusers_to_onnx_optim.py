@@ -23,6 +23,7 @@
 # v2.0 Refactored + enabled conversion to fp16 for Text Encoder
 # v2.1 Support for safetensors
 # v2.2 Reduce visible warnings
+# v3.0 You can now provide an alternative VAE
 
 import argparse
 import os
@@ -42,6 +43,7 @@ import safetensors
 
 import onnx
 from onnxconverter_common import convert_float_to_float16
+from diffusers.models import AutoencoderKL
 from diffusers import OnnxStableDiffusionPipeline, StableDiffusionPipeline
 from diffusers.onnx_utils import OnnxRuntimeModel
 
@@ -84,10 +86,14 @@ def convert_to_fp16(
     onnx.save(fp16_model, model_path)    
 
 @torch.no_grad()
-def convert_models(model_path: str, output_path: str, opset: int, fp16: bool):
+def convert_models(model_path: str, output_path: str, vae_path: str, opset: int, fp16: bool):
     dtype=torch.float32
     device = "cpu"
-    pipeline = StableDiffusionPipeline.from_pretrained(model_path, torch_dtype=dtype).to(device)
+    if (vae_path):
+        vae = AutoencoderKL.from_pretrained(vae_path)
+        pipeline = StableDiffusionPipeline.from_pretrained(model_path, torch_dtype=dtype, vae=vae).to(device)
+    else:
+        pipeline = StableDiffusionPipeline.from_pretrained(model_path, torch_dtype=dtype).to(device)
     output_path = Path(output_path)
 
     # TEXT ENCODER
@@ -248,6 +254,13 @@ if __name__ == "__main__":
         required=True,
         help="Path to the output model."
     )
+    
+    parser.add_argument(
+        "--vae_path",
+        default="",
+        type=str,
+        help="Path to alternate VAE `diffusers` checkpoint to import and convert (either local or on the Hub)."
+    )
 
     parser.add_argument(
         "--opset",
@@ -264,4 +277,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    convert_models(args.model_path, args.output_path, args.opset, args.fp16)
+    convert_models(args.model_path, args.output_path, args.vae_path, args.opset, args.fp16)
