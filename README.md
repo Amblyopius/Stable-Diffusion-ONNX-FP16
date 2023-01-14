@@ -113,6 +113,22 @@ If you're done you can go back to the CMD window and press Ctrl+C and it will qu
 Note that it expects your models to be in the model directory (which is why we put them there in the instructions).  
 You can find your history and all the pictures you created in the directory called output.
 
+## Advanced features
+### Use alternative VAE
+Some models will suggest using an alternative VAE.
+It's possible to copy the model.onnx from an existing directory and put it in another one, but you may want to keep the conversion command line you use for reference.
+To simplify the task of using an alternative VAE you can now pass it as part of the conversion command.
+
+Say you want to have SD1.5 but with the updated MSE VAE that was released later and is the result of further training. You can do it like this:
+```
+python diffusers_to_onnx_optim.py --model_path "runwayml/stable-diffusion-v1-5" --output_path "./model/sd1_5-fp16-vae_ft_mse" --vae_path "stabilityai/sd-vae-ft-mse" --fp16
+```
+This works as the VAE is specifically released seperately.  
+If you have a VAE locally on disk in diffusers format that you want to use, this can be done too. Say we have SD 2.1 Base downloaded and we want to use SD1.5 but with the VAE from SD 2.1 Base:
+```
+python diffusers_to_onnx_optim.py --model_path "runwayml/stable-diffusion-v1-5" --output_path "./sd1_5-fp16-vae_2_1" --vae_path "stable-diffusion-2-1-base/vae" --fp16
+```
+
 ## FAQ
 ### Why are you using ORT Nightly?
 The release schedule for ONNX Runtime is quite long and as a result the speed difference between ORT Nightly and the official release is massive.
