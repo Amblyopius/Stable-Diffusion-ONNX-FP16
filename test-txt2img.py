@@ -20,8 +20,7 @@ import numpy
 # We need regular expressions support
 import re
 
-
-from diffusers import OnnxStableDiffusionPipeline
+from diffusers import OnnxStableDiffusionPipeline, OnnxRuntimeModel
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -79,6 +78,12 @@ if __name__ == "__main__":
         required=False,
         help="Seed for generation, allows you to get the exact same image again",
     )
+    
+    parser.add_argument(
+        "--cpuclip",
+        action="store_true",
+        help="Load CLIP on CPU to save VRAM"
+    )
 
     args = parser.parse_args()
     
@@ -96,8 +101,12 @@ if __name__ == "__main__":
         num_inference_steps=args.steps
         guidance_scale=args.scale
         prompt = args.prompt
-        negative_prompt="bad hands, blurry"
-        pipe = OnnxStableDiffusionPipeline.from_pretrained(args.model, provider="DmlExecutionProvider")
+        negative_prompt = args.negprompt
+        if args.cpuclip:
+            cpuclip=OnnxRuntimeModel.from_pretrained(args.model+"/text_encoder")
+            pipe = OnnxStableDiffusionPipeline.from_pretrained(args.model, provider="DmlExecutionProvider", text_encoder=cpuclip)
+        else:
+            pipe = OnnxStableDiffusionPipeline.from_pretrained(args.model, provider="DmlExecutionProvider")
         image = pipe(prompt, width, height, num_inference_steps, guidance_scale, negative_prompt,generator=generator).images[0] 
         image.save(imgname)
     else:
