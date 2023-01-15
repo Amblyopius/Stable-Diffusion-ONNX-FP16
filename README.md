@@ -129,6 +129,18 @@ If you have a VAE locally on disk in diffusers format that you want to use, this
 python diffusers_to_onnx_optim.py --model_path "runwayml/stable-diffusion-v1-5" --output_path "./model/sd1_5-fp16-vae_2_1" --vae_path "stable-diffusion-2-1-base/vae" --fp16
 ```
 
+### Reducing VRAM usage
+While FP16 already uses a lot less VRAM, you may still run into VRAM issues. The easiest solution is to load CLIP on CPU rather than GPU. CLIP is only used as part of prompt parsing and not during the iterations.
+You can expect some additional latency when CLIP is on CPU, but this will be fairly minor as CLIP is not very taxing. You also gain more than that back during the iterations if you're near your VRAM limit.
+You'll bump into VRAM limits when it is limited (8GB or less), or you're trying to use a 768x768 model.
+
+In test-txt2img.py you can see how this works. You can pass --cpuclip and it will load CLIP on CPU. This is how I load the CLIP model on CPU:
+```
+            cpuclip=OnnxRuntimeModel.from_pretrained(args.model+"/text_encoder")
+            pipe = OnnxStableDiffusionPipeline.from_pretrained(args.model, provider="DmlExecutionProvider", text_encoder=cpuclip)
+```
+You can use this in your own code when needed.
+
 ## FAQ
 ### Why are you using ORT Nightly?
 The release schedule for ONNX Runtime is quite long and as a result the speed difference between ORT Nightly and the official release is massive.
