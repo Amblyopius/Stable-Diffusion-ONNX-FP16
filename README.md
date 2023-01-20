@@ -141,6 +141,11 @@ In test-txt2img.py you can see how this works. You can pass --cpuclip and it wil
 ```
 You can use this in your own code when needed.
 
+In extreme circumstances you can also try to load VAE on CPU. This is likely to be only of use for cards that have limited VRAM. The need to load VAE on CPU can be identified when generation crashes after the steps.
+So if it goes through all the steps but then crashes when it needs to save the final image, VAE is your issue. If it crashes before steps is finished, changes to where VAE is loaded are unlikely to make much of a difference.  
+You can pass --cpuvae to test-txt2img.py to load VAE on CPU (this will always also load CLIP on CPU).  
+Note that having VAE loaded on CPU is CPU intensive (far more than CLIP is) and you'll see RAM use spike.
+
 ## FAQ
 ### Why are you using ORT Nightly?
 The release schedule for ONNX Runtime is quite long and as a result the speed difference between ORT Nightly and the official release is massive.
