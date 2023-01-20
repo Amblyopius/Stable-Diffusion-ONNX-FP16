@@ -84,6 +84,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Load CLIP on CPU to save VRAM"
     )
+    
+    parser.add_argument(
+        "--cpuvae",
+        action="store_true",
+        help="Load VAE on CPU, this, this will always load CLIP on CPU too"
+    )
 
     args = parser.parse_args()
     
@@ -104,7 +110,11 @@ if __name__ == "__main__":
         negative_prompt = args.negprompt
         if args.cpuclip:
             cpuclip=OnnxRuntimeModel.from_pretrained(args.model+"/text_encoder")
-            pipe = OnnxStableDiffusionPipeline.from_pretrained(args.model, provider="DmlExecutionProvider", text_encoder=cpuclip)
+            if args.cpuvae:
+                cpuvae=OnnxRuntimeModel.from_pretrained(args.model+"/vae_decoder")
+                pipe = OnnxStableDiffusionPipeline.from_pretrained(args.model, provider="DmlExecutionProvider", text_encoder=cpuclip, vae_decoder=cpuvae, vae_encoder=None)
+            else:
+                pipe = OnnxStableDiffusionPipeline.from_pretrained(args.model, provider="DmlExecutionProvider", text_encoder=cpuclip)
         else:
             pipe = OnnxStableDiffusionPipeline.from_pretrained(args.model, provider="DmlExecutionProvider")
         image = pipe(prompt, width, height, num_inference_steps, guidance_scale, negative_prompt,generator=generator).images[0] 
