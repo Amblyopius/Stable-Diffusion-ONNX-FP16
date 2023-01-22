@@ -81,18 +81,24 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--cpuclip",
+        "--cpu-textenc", "--cpuclip",
         action="store_true",
-        help="Load CLIP on CPU to save VRAM"
+        help="Load Text Encoder on CPU to save VRAM"
     )
 
     parser.add_argument(
         "--cpuvae",
         action="store_true",
-        help="Load VAE on CPU, this, this will always load CLIP on CPU too"
+        help="Load VAE on CPU, this will always load the Text Encoder on CPU too"
     )
 
     args = parser.parse_args()
+
+    VAECPU = TECPU = False
+    if args.cpuvae:
+        VAECPU = TECPU = True
+    if args.cpu_textenc:
+        TECPU=True
 
     if match := re.search(r"([^/\\]*)[/\\]?$", args.model):
         fmodel = match.group(1)
@@ -109,16 +115,16 @@ if __name__ == "__main__":
         guidance_scale=args.scale
         prompt = args.prompt
         negative_prompt = args.negprompt
-        if args.cpuclip:
-            cpuclip=OnnxRuntimeModel.from_pretrained(args.model+"/text_encoder")
-            if args.cpuvae:
+        if TECPU:
+            cputextenc=OnnxRuntimeModel.from_pretrained(args.model+"/text_encoder")
+            if VAECPU:
                 cpuvae=OnnxRuntimeModel.from_pretrained(args.model+"/vae_decoder")
                 pipe = OnnxStableDiffusionPipeline.from_pretrained(args.model,
-                    provider="DmlExecutionProvider", text_encoder=cpuclip, vae_decoder=cpuvae,
+                    provider="DmlExecutionProvider", text_encoder=cputextenc, vae_decoder=cpuvae,
                     vae_encoder=None)
             else:
                 pipe = OnnxStableDiffusionPipeline.from_pretrained(args.model,
-                    provider="DmlExecutionProvider", text_encoder=cpuclip)
+                    provider="DmlExecutionProvider", text_encoder=cputextenc)
         else:
             pipe = OnnxStableDiffusionPipeline.from_pretrained(args.model,
                 provider="DmlExecutionProvider")
