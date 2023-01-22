@@ -14,7 +14,7 @@
 # *****
 # NOTE this was originally derived from:
 # https://github.com/huggingface/diffusers/blob/main/scripts/convert_stable_diffusion_checkpoint_to_onnx.py
-# 
+#
 # Original file released under Apache License, Version 2.0
 # *****
 #
@@ -25,17 +25,11 @@
 # v2.2 Reduce visible warnings
 # v3.0 You can now provide an alternative VAE
 
+import warnings
 import argparse
 import os
 import shutil
 from pathlib import Path
-
-# To improve future development and testing, warnings should be limited to what is somewhat useful
-import warnings
-# Truncation warnings are expected as part of FP16 conversion and should not be shown
-warnings.filterwarnings('ignore','.*will be truncated.*')
-# We are ignoring prim::Constant type related warnings
-warnings.filterwarnings('ignore','.*The shape inference of prim::Constant type is missing.*')
 
 import torch
 from torch.onnx import export
@@ -47,6 +41,12 @@ from diffusers.models import AutoencoderKL
 from diffusers import OnnxStableDiffusionPipeline, StableDiffusionPipeline
 from diffusers.onnx_utils import OnnxRuntimeModel
 
+# To improve future development and testing, warnings should be limited to what is somewhat useful
+# Truncation warnings are expected as part of FP16 conversion and should not be shown
+warnings.filterwarnings('ignore','.*will be truncated.*')
+# We are ignoring prim::Constant type related warnings
+warnings.filterwarnings('ignore','.*The shape inference of prim::Constant type is missing.*')
+
 def onnx_export(
     model,
     model_args: tuple,
@@ -56,6 +56,7 @@ def onnx_export(
     dynamic_axes,
     opset,
 ):
+    '''export a PyTorch model as an ONNX model'''
     output_path.parent.mkdir(parents=True, exist_ok=True)
     export(
         model,
@@ -68,10 +69,11 @@ def onnx_export(
         opset_version=opset,
     )
 
-@torch.no_grad()    
+@torch.no_grad()
 def convert_to_fp16(
     model_path
 ):
+    '''Converts an ONNX model on disk to FP16'''
     model_dir=os.path.dirname(model_path)
     # Breaking down in steps due to Windows bug in convert_float_to_float16_model_path
     onnx.shape_inference.infer_shapes_path(model_path)
@@ -83,17 +85,20 @@ def convert_to_fp16(
     shutil.rmtree(model_dir)
     os.mkdir(model_dir)
     # save FP16 model
-    onnx.save(fp16_model, model_path)    
+    onnx.save(fp16_model, model_path)
 
 @torch.no_grad()
 def convert_models(model_path: str, output_path: str, vae_path: str, opset: int, fp16: bool):
+    '''Converts the individual models in a path (UNET, VAE ...) to ONNX'''
     dtype=torch.float32
     device = "cpu"
-    if (vae_path):
+    if vae_path:
         vae = AutoencoderKL.from_pretrained(vae_path)
-        pipeline = StableDiffusionPipeline.from_pretrained(model_path, torch_dtype=dtype, vae=vae).to(device)
+        pipeline = StableDiffusionPipeline.from_pretrained(model_path,
+            torch_dtype=dtype, vae=vae).to(device)
     else:
-        pipeline = StableDiffusionPipeline.from_pretrained(model_path, torch_dtype=dtype).to(device)
+        pipeline = StableDiffusionPipeline.from_pretrained(model_path,
+            torch_dtype=dtype).to(device)
     output_path = Path(output_path)
 
     # TEXT ENCODER
@@ -109,7 +114,7 @@ def convert_models(model_path: str, output_path: str, vae_path: str, opset: int,
     textenc_path=output_path / "text_encoder" / "model.onnx"
     onnx_export(
         pipeline.text_encoder,
-        # casting to torch.int32 until the CLIP fix is released: https://github.com/huggingface/transformers/pull/18515/files
+        # casting to torch.int32 https://github.com/huggingface/transformers/pull/18515/files
         model_args=(text_input.input_ids.to(device=device, dtype=torch.int32)),
         output_path=textenc_path,
         ordered_input_names=["input_ids"],
@@ -131,7 +136,8 @@ def convert_models(model_path: str, output_path: str, vae_path: str, opset: int,
     onnx_export(
         pipeline.unet,
         model_args=(
-            torch.randn(2, unet_in_channels, unet_sample_size, unet_sample_size).to(device=device, dtype=dtype),
+            torch.randn(2, unet_in_channels, unet_sample_size,
+                unet_sample_size).to(device=device, dtype=dtype),
             torch.randn(2).to(device=device, dtype=dtype),
             torch.randn(2, num_tokens, text_hidden_size).to(device=device, dtype=dtype),
             False,
@@ -170,11 +176,13 @@ def convert_models(model_path: str, output_path: str, vae_path: str, opset: int,
     vae_in_channels = vae_encoder.config.in_channels
     vae_sample_size = vae_encoder.config.sample_size
     # need to get the raw tensor output (sample) from the encoder
-    vae_encoder.forward = lambda sample, return_dict: vae_encoder.encode(sample, return_dict)[0].sample()
+    vae_encoder.forward = lambda sample, return_dict: vae_encoder.encode(sample,
+        return_dict)[0].sample()
     onnx_export(
         vae_encoder,
         model_args=(
-            torch.randn(1, vae_in_channels, vae_sample_size, vae_sample_size).to(device=device, dtype=dtype),
+            torch.randn(1, vae_in_channels, vae_sample_size,
+                vae_sample_size).to(device=device, dtype=dtype),
             False,
         ),
         output_path=output_path / "vae_encoder" / "model.onnx",
@@ -195,7 +203,8 @@ def convert_models(model_path: str, output_path: str, vae_path: str, opset: int,
     onnx_export(
         vae_decoder,
         model_args=(
-            torch.randn(1, vae_latent_channels, unet_sample_size, unet_sample_size).to(device=device, dtype=dtype),
+            torch.randn(1, vae_latent_channels, unet_sample_size,
+                unet_sample_size).to(device=device, dtype=dtype),
             False,
         ),
         output_path=output_path / "vae_decoder" / "model.onnx",
@@ -211,9 +220,9 @@ def convert_models(model_path: str, output_path: str, vae_path: str, opset: int,
     # SAFETY CHECKER
     # NOTE:
     # Safety checker is excluded because it is a resource hog and you'd be turning it off anyway
-    # I'm not a legal expert but IMHO you are still bound by the model's license after conversion to ONNX
+    # I'm not a legal expert but IMHO you are still bound by the model's license after conversion
     # Check the license of the model you are converting and abide by it
-            
+
     safety_checker = None
     feature_extractor = None
 
@@ -234,7 +243,8 @@ def convert_models(model_path: str, output_path: str, vae_path: str, opset: int,
 
     del pipeline
     del onnx_pipeline
-    _ = OnnxStableDiffusionPipeline.from_pretrained(output_path, provider="CPUExecutionProvider")
+    _ = OnnxStableDiffusionPipeline.from_pretrained(output_path,
+        provider="CPUExecutionProvider")
     print("ONNX pipeline is loadable")
 
 
@@ -254,7 +264,7 @@ if __name__ == "__main__":
         required=True,
         help="Path to the output model."
     )
-    
+
     parser.add_argument(
         "--vae_path",
         default="",
@@ -268,7 +278,7 @@ if __name__ == "__main__":
         type=int,
         help="The version of the ONNX operator set to use.",
     )
-    
+
     parser.add_argument(
         "--fp16",
         action="store_true",
@@ -278,3 +288,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     convert_models(args.model_path, args.output_path, args.vae_path, args.opset, args.fp16)
+    
