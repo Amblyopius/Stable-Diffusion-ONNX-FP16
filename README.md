@@ -130,16 +130,16 @@ python diffusers_to_onnx_optim.py --model_path "runwayml/stable-diffusion-v1-5" 
 ```
 
 ### Reducing VRAM usage
-While FP16 already uses a lot less VRAM, you may still run into VRAM issues. The easiest solution is to load CLIP on CPU rather than GPU. CLIP is only used as part of prompt parsing and not during the iterations.
-You can expect some additional latency when CLIP is on CPU, but this will be fairly minor as CLIP is not very taxing. You also gain more than that back during the iterations if you're near your VRAM limit.
+While FP16 already uses a lot less VRAM, you may still run into VRAM issues. The easiest solution is to load the Text Encoder on CPU rather than GPU. The Text Encoder is only used as part of prompt parsing and not during the iterations.
+You can expect some additional latency when the Text Encoder is on CPU, but this will be fairly minor as it is not compute intensive. You also gain more than that back during the iterations if you're near your VRAM limit.
 You'll bump into VRAM limits when it is limited (8GB or less), or you're trying to use a 768x768 model.
 
-In test-txt2img.py you can see how this works. You can pass --cpuclip and it will load CLIP on CPU. This is how I load the CLIP model on CPU:
+In test-txt2img.py you can see how this works. You can pass --cpu-textenc and it will load the Text Encoder on CPU. This is how it's done:
 ```
-            cpuclip=OnnxRuntimeModel.from_pretrained(args.model+"/text_encoder")
-            pipe = OnnxStableDiffusionPipeline.from_pretrained(args.model, provider="DmlExecutionProvider", text_encoder=cpuclip)
+            cputextenc=OnnxRuntimeModel.from_pretrained(args.model+"/text_encoder")
+            pipe = OnnxStableDiffusionPipeline.from_pretrained(args.model, provider="DmlExecutionProvider", text_encoder=cputextenc)
 ```
-You can use this in your own code when needed.
+You can use this in your own code when needed. OnnxDiffusersUI supports --cpu-textenc too.
 
 In extreme circumstances you can also try to load VAE on CPU. This is likely to be only of use for cards that have limited VRAM. The need to load VAE on CPU can be identified when generation crashes after the steps.
 So if it goes through all the steps but then crashes when it needs to save the final image, VAE is your issue. If it crashes before steps is finished, changes to where VAE is loaded are unlikely to make much of a difference.  
