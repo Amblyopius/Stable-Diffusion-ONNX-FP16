@@ -2,7 +2,7 @@
 
 This repository contains a conversion tool, some examples, and instructions on how to set up Stable Diffusion with ONNX models.
 This was mainly intended for use with AMD GPUs but should work just as well with other DirectML devices (e.g. Intel Arc).
-I'd be very interested to hear of any results with Intel Arc.
+I'd be very interested to hear of any results with Intel Arc.  
 **NOTE:** To avoid confusion the repository has been renamed but old links should still work.
 
 This focuses specifically on making it easy to get FP16 models. When using FP16 the VRAM footprint is significantly reduced and speed goes up.
