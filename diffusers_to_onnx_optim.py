@@ -24,6 +24,7 @@
 # v2.1 Support for safetensors
 # v2.2 Reduce visible warnings
 # v3.0 You can now provide an alternative VAE
+# v3.1 Align with diffusers 0.12.0
 
 import warnings
 import argparse
@@ -38,8 +39,7 @@ import safetensors
 import onnx
 from onnxconverter_common import convert_float_to_float16
 from diffusers.models import AutoencoderKL
-from diffusers import OnnxStableDiffusionPipeline, StableDiffusionPipeline
-from diffusers.onnx_utils import OnnxRuntimeModel
+from diffusers import OnnxRuntimeModel, OnnxStableDiffusionPipeline, StableDiffusionPipeline
 
 # To improve future development and testing, warnings should be limited to what is somewhat useful
 # Truncation warnings are expected as part of FP16 conversion and should not be shown
