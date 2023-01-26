@@ -25,6 +25,7 @@
 # v2.2 Reduce visible warnings
 # v3.0 You can now provide an alternative VAE
 # v3.1 Align with diffusers 0.12.0
+# v4.0 Support ckpt conversion (--> renamed to conv_sd_to_onnx.py)
 
 import warnings
 import argparse
@@ -40,6 +41,7 @@ import onnx
 from onnxconverter_common import convert_float_to_float16
 from diffusers.models import AutoencoderKL
 from diffusers import OnnxRuntimeModel, OnnxStableDiffusionPipeline, StableDiffusionPipeline
+from diffusers.pipelines.stable_diffusion.convert_from_ckpt import load_pipeline_from_original_stable_diffusion_ckpt
 
 # To improve future development and testing, warnings should be limited to what is somewhat useful
 # Truncation warnings are expected as part of FP16 conversion and should not be shown
@@ -88,19 +90,11 @@ def convert_to_fp16(
     onnx.save(fp16_model, model_path)
 
 @torch.no_grad()
-def convert_models(model_path: str, output_path: str, vae_path: str, opset: int, fp16: bool):
+def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: int, fp16: bool):
     '''Converts the individual models in a path (UNET, VAE ...) to ONNX'''
-    dtype=torch.float32
-    device = "cpu"
-    if vae_path:
-        vae = AutoencoderKL.from_pretrained(vae_path)
-        pipeline = StableDiffusionPipeline.from_pretrained(model_path,
-            torch_dtype=dtype, vae=vae).to(device)
-    else:
-        pipeline = StableDiffusionPipeline.from_pretrained(model_path,
-            torch_dtype=dtype).to(device)
+    
     output_path = Path(output_path)
-
+    
     # TEXT ENCODER
     num_tokens = pipeline.text_encoder.config.max_position_embeddings
     text_hidden_size = pipeline.text_encoder.config.hidden_size
@@ -255,7 +249,10 @@ if __name__ == "__main__":
         "--model_path",
         type=str,
         required=True,
-        help="Path to the `diffusers` checkpoint to convert (either a local directory or on the Hub).",
+        help=(
+            "Path to the `diffusers` checkpoint to convert (either a local directory or on the Hub). "
+            "Or the path to a local checkpoint saved in .ckpt or .safetensors."
+        )
     )
 
     parser.add_argument(
@@ -269,7 +266,10 @@ if __name__ == "__main__":
         "--vae_path",
         default="",
         type=str,
-        help="Path to alternate VAE `diffusers` checkpoint to import and convert (either local or on the Hub)."
+        help=(
+            "Path to alternate VAE `diffusers` checkpoint to import and convert (either local or on the Hub). "
+            "Works only when converting from diffusers format."
+        )
     )
 
     parser.add_argument(
@@ -284,8 +284,83 @@ if __name__ == "__main__":
         action="store_true",
         help="Export Text Encoder and UNET in mixed `float16` mode"
     )
+    
+    parser.add_argument(
+        "--ckpt-original-config-file",
+        default=None,
+        type=str,
+        help="The YAML config file corresponding to the original architecture.",
+    )
+    
+    parser.add_argument(
+        "--ckpt-image-size",
+        default=None,
+        type=int,
+        help="The image size that the model was trained on. Typically 512 or 768"
+    )
+
+    parser.add_argument(
+        "--ckpt-prediction_type",
+        default=None,
+        type=str,
+        help="Prediction type the model was trained on. 'epsilon' for SD v1.X and SD v2 Base, 'v-prediction' for SD v2"
+    )
+    
+    parser.add_argument(
+        "--ckpt-pipeline_type",
+        default=None,
+        type=str,
+        help="The pipeline type. If `None` pipeline will be automatically inferred.",
+    )
+    
+    parser.add_argument(
+        "--ckpt-extract-ema",
+        action="store_true",
+        help=(
+            "Only relevant for checkpoints that have both EMA and non-EMA weights. Whether to extract the EMA weights"
+            " or not. Defaults to `False`. Add `--extract_ema` to extract the EMA weights. EMA weights usually yield"
+            " higher quality images for inference. Non-EMA weights are usually better to continue fine-tuning."
+        ),
+    )
+    
+    parser.add_argument(
+        "--ckpt-num-in-channels",
+        default=None,
+        type=int,
+        help="The number of input channels. If `None` number of input channels will be automatically inferred.",
+    )
+    
+    parser.add_argument(
+        "--ckpt-upcast-attention",
+        action="store_true",
+        help="Whether the attention computation should always be upcasted. Necessary when running SD 2.1"
+    )
 
     args = parser.parse_args()
 
-    convert_models(args.model_path, args.output_path, args.vae_path, args.opset, args.fp16)
+    dtype=torch.float32
+    device = "cpu"
+    if args.model_path.endswith(".ckpt") or args.model_path.endswith(".safetensors"):
+        pipeline = load_pipeline_from_original_stable_diffusion_ckpt(
+            checkpoint_path=args.model_path,
+            original_config_file=args.ckpt_original_config_file,
+            image_size=args.ckpt_image_size,
+            prediction_type=args.ckpt_prediction_type,
+            model_type=args.ckpt_pipeline_type,
+            extract_ema=args.ckpt_extract_ema,
+            scheduler_type="pndm",
+            num_in_channels=args.ckpt_num_in_channels,
+            upcast_attention=args.ckpt_upcast_attention,
+            from_safetensors=args.model_path.endswith(".safetensors")
+        )
+    else:    
+        if args.vae_path:
+            vae = AutoencoderKL.from_pretrained(args.vae_path)
+            pipeline = StableDiffusionPipeline.from_pretrained(args.model_path,
+                torch_dtype=dtype, vae=vae).to(device)
+        else:
+            pipeline = StableDiffusionPipeline.from_pretrained(args.model_path,
+                torch_dtype=dtype).to(device)    
+
+    convert_models(pipeline, args.output_path, args.opset, args.fp16)
     

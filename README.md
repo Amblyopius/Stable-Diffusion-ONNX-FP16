@@ -3,7 +3,10 @@
 This repository contains a conversion tool, some examples, and instructions on how to set up Stable Diffusion with ONNX models.
 This was mainly intended for use with AMD GPUs but should work just as well with other DirectML devices (e.g. Intel Arc).
 I'd be very interested to hear of any results with Intel Arc.  
-**NOTE:** To avoid confusion the repository has been renamed but old links should still work.
+
+**MOST IMPORTANT RECENT UPDATES:**  
+**- The conversion script has been renamed to avoid ambiguity (It can now do .ckpt too)  
+**- The repository has been renamed to avoid ambiguity (ONNX DirectML will run on any recent card, not just AMD)**
 
 This focuses specifically on making it easy to get FP16 models. When using FP16 the VRAM footprint is significantly reduced and speed goes up.
 
@@ -30,7 +33,7 @@ sd_env\scripts\activate
 python -m pip install --upgrade pip
 pip install numpy==1.23.5
 pip install transformers diffusers torch ftfy spacy scipy
-pip install gradio OmegaConf
+pip install gradio omegaconf
 pip install --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ORT-Nightly/pypi/simple/ ort-nightly-directml
 ```
 
@@ -47,14 +50,14 @@ sd_env_conv\scripts\activate
 python -m pip install --upgrade pip
 pip install numpy==1.23.5
 pip install transformers diffusers torch ftfy spacy scipy safetensors
-pip install onnx onnxconverter_common onnxruntime-directml
+pip install onnx onnxconverter_common onnxruntime-directml omegaconf
 ```
 
 This will be your environment when you're converting models from diffusers to ONNX.
 I prefer to keep these separate because of some conflicting libraries.
 Feel free to combine them if you know what you're doing.
 
-Download diffusers_to_onnx_optim.py from this repository and put it in your directory
+Download conv_sd_to_onnx.py from this repository and put it in your directory
 
 Now first make sure you have an account on https://huggingface.co/  
 When you do make sure to create a token on https://huggingface.co/settings/tokens  
@@ -66,8 +69,8 @@ huggingface-cli login
 Now you're ready to download and convert models. Start with the basics and do:
 ```
 mkdir model
-python diffusers_to_onnx_optim.py --model_path "stabilityai/stable-diffusion-2-1-base" --output_path "./model/sd2_1base-fp32" 
-python diffusers_to_onnx_optim.py --model_path "stabilityai/stable-diffusion-2-1-base" --output_path "./model/sd2_1base-fp16" --fp16
+python conv_sd_to_onnx.py --model_path "stabilityai/stable-diffusion-2-1-base" --output_path "./model/sd2_1base-fp32" 
+python conv_sd_to_onnx.py --model_path "stabilityai/stable-diffusion-2-1-base" --output_path "./model/sd2_1base-fp16" --fp16
 ```
 
 You now have 2 models. These are geared towards creating 512x512 images. Get test-txt2img.py from the repository.  
@@ -89,7 +92,7 @@ The accuracy just shifts things a bit, but it may just as well shift them for th
 Next let's try do 768x768. This requires your card to have enough VRAM but it does run fine on for example 12GB VRAM. Interested in feedback on how it does on 8GB!  
 First make sure you're back on the sd_env_conv environment and then do:
 ```
-python diffusers_to_onnx_optim.py --model_path "stabilityai/stable-diffusion-2-1" --output_path "./model/sd2_1-fp16" --fp16
+python conv_sd_to_onnx.py --model_path "stabilityai/stable-diffusion-2-1" --output_path "./model/sd2_1-fp16" --fp16
 ```
 
 Here we aren't bothering with FP32 because it just requires too much VRAM. Once downloaded we'll just run our test again (in the sd_env environment of course):
@@ -123,12 +126,12 @@ To simplify the task of using an alternative VAE you can now pass it as part of 
 
 Say you want to have SD1.5 but with the updated MSE VAE that was released later and is the result of further training. You can do it like this:
 ```
-python diffusers_to_onnx_optim.py --model_path "runwayml/stable-diffusion-v1-5" --output_path "./model/sd1_5-fp16-vae_ft_mse" --vae_path "stabilityai/sd-vae-ft-mse" --fp16
+python conv_sd_to_onnx.py --model_path "runwayml/stable-diffusion-v1-5" --output_path "./model/sd1_5-fp16-vae_ft_mse" --vae_path "stabilityai/sd-vae-ft-mse" --fp16
 ```
 This works as the VAE is specifically released seperately.  
 If you have a VAE locally on disk in diffusers format that you want to use, this can be done too. Say we have SD 2.1 Base downloaded and we want to use SD1.5 but with the VAE from SD 2.1 Base:
 ```
-python diffusers_to_onnx_optim.py --model_path "runwayml/stable-diffusion-v1-5" --output_path "./model/sd1_5-fp16-vae_2_1" --vae_path "stable-diffusion-2-1-base/vae" --fp16
+python conv_sd_to_onnx.py --model_path "runwayml/stable-diffusion-v1-5" --output_path "./model/sd1_5-fp16-vae_2_1" --vae_path "stable-diffusion-2-1-base/vae" --fp16
 ```
 
 ### Reducing VRAM usage
@@ -147,6 +150,27 @@ In extreme circumstances you can also try to load VAE on CPU. This is likely to 
 So if it goes through all the steps but then crashes when it needs to save the final image, VAE is your issue. If it crashes before steps is finished, changes to where VAE is loaded are unlikely to make much of a difference.  
 **You can pass --cpuvae to test-txt2img.py to load VAE on CPU (this will always also load CLIP on CPU).**  
 Note that having VAE loaded on CPU is CPU intensive (far more than CLIP is) and you'll see RAM use spike.
+
+### Conversion of .ckpt / .safetensors
+Did your model come as a single file ending in .safetensors or .ckpt? Don't worry, with the 0.12.0 release of diffusers I can now use diffusers to load these directly. I have updated (and renamed) the conversion tool and it 
+will convert directly from .ckpt to ONNX.
+
+This is probably the most requested feature as many of you have used https://www.civitai.com/ and have found the conversion process a bit cumbersome.
+
+To properly convert a file you do need a .yaml config file. Ideally this should be included but if not you're advised to try with the v1-inference.yaml included in this repository.  
+To convert a model you'd then do:
+```
+python conv_sd_to_onnx.py --model_path ".\downloaded.ckpt" --output_path "./model/downloaded-fp16" --ckpt-original-config-file downloaded.yaml --fp16
+```
+If it did not come with a .yaml config file, try with v1-inference.yaml.
+
+If you have a choice between .safetensors and .ckpt, go for .safetensors. In theory a .ckpt file can contain malicious code. I have not seen any reports of this happening but it's better to be safe than sorry.
+
+The conversion tool also has additional parameters you can set when converting from .ckpt/.safetensors. The best way to find all the parameters is by doing:
+```
+python conv_sd_to_onnx.py --help
+```
+You should generally not need these but some advanced users may want to have them just in case.
 
 ## FAQ
 ### Why are you using ORT Nightly?
