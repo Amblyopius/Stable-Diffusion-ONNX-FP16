@@ -183,10 +183,8 @@ They are completely valid drop in replacements and transparently run in FP16 on 
 This makes it possible to run both FP16 and FP32 models with the exact same code.
 
 ### Can I convert non-official models?
-Yes, as long as the models have the diffusers format too (not just ckpt). Some suggestions:
-- https://huggingface.co/wavymulder/Analog-Diffusion
-- https://huggingface.co/Linaqruf/anything-v3.0
-- https://huggingface.co/prompthero/openjourney
+You should be able to convert any model. Most of the models can be found on https://huggingface.co/, but you may prefer using https://civitai.com/ instead.
+It's generally better to start from a model in diffusers form but if you only have the .ckpt/.safetensors file you now have instructions on how to convert these directly into ONNX.
 
 ### Does this work for inpainting / img2img?
 Yes, it has been tested on the inpainting models and it works fine. Just like with txt2img, replacement is transparent as the interface is FP32.
