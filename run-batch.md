@@ -8,7 +8,7 @@ Hopefully run-batch.py will make your life a bit easier.
 ## Set up
 Drop run-batch.py where you've installed OnnxDiffusersUI (it'll use the same lwp_pipe.py).
 
-As parameter run-batch.py accepts 1 or more paths where it will then check for the xisting of settings.json.
+As parameter run-batch.py accepts 1 or more paths where it will then check for the existence of settings.json.
 It'll read settings.json, create a batch of images and save them in the directory it just got the settings from.
 
 In settings.json you can define the following things:
