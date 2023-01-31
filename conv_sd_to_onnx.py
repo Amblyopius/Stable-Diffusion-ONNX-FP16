@@ -92,9 +92,9 @@ def convert_to_fp16(
 @torch.no_grad()
 def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: int, fp16: bool):
     '''Converts the individual models in a path (UNET, VAE ...) to ONNX'''
-    
+
     output_path = Path(output_path)
-    
+
     # TEXT ENCODER
     num_tokens = pipeline.text_encoder.config.max_position_embeddings
     text_hidden_size = pipeline.text_encoder.config.hidden_size
@@ -238,7 +238,7 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
     del pipeline
     del onnx_pipeline
     _ = OnnxStableDiffusionPipeline.from_pretrained(output_path,
-        provider="CPUExecutionProvider")
+        provider="DmlExecutionProvider")
     print("ONNX pipeline is loadable")
 
 
@@ -284,14 +284,21 @@ if __name__ == "__main__":
         action="store_true",
         help="Export Text Encoder and UNET in mixed `float16` mode"
     )
-    
+
+    parser.add_argument(
+        "--attention-slicing",
+        choices={"auto"},
+        type=str,
+        help="Attention slicing, off by default. Can be set to auto. Reduces amount of VRAM used."
+    )
+
     parser.add_argument(
         "--ckpt-original-config-file",
         default=None,
         type=str,
-        help="The YAML config file corresponding to the original architecture.",
+        help="The YAML config file corresponding to the original architecture."
     )
-    
+
     parser.add_argument(
         "--ckpt-image-size",
         default=None,
@@ -305,14 +312,14 @@ if __name__ == "__main__":
         type=str,
         help="Prediction type the model was trained on. 'epsilon' for SD v1.X and SD v2 Base, 'v-prediction' for SD v2"
     )
-    
+
     parser.add_argument(
         "--ckpt-pipeline_type",
         default=None,
         type=str,
-        help="The pipeline type. If `None` pipeline will be automatically inferred.",
+        help="The pipeline type. If `None` pipeline will be automatically inferred."
     )
-    
+
     parser.add_argument(
         "--ckpt-extract-ema",
         action="store_true",
@@ -320,16 +327,16 @@ if __name__ == "__main__":
             "Only relevant for checkpoints that have both EMA and non-EMA weights. Whether to extract the EMA weights"
             " or not. Defaults to `False`. Add `--extract_ema` to extract the EMA weights. EMA weights usually yield"
             " higher quality images for inference. Non-EMA weights are usually better to continue fine-tuning."
-        ),
+        )
     )
-    
+
     parser.add_argument(
         "--ckpt-num-in-channels",
         default=None,
         type=int,
         help="The number of input channels. If `None` number of input channels will be automatically inferred.",
     )
-    
+
     parser.add_argument(
         "--ckpt-upcast-attention",
         action="store_true",
@@ -341,7 +348,7 @@ if __name__ == "__main__":
     dtype=torch.float32
     device = "cpu"
     if args.model_path.endswith(".ckpt") or args.model_path.endswith(".safetensors"):
-        pipeline = load_pipeline_from_original_stable_diffusion_ckpt(
+        pl = load_pipeline_from_original_stable_diffusion_ckpt(
             checkpoint_path=args.model_path,
             original_config_file=args.ckpt_original_config_file,
             image_size=args.ckpt_image_size,
@@ -353,14 +360,17 @@ if __name__ == "__main__":
             upcast_attention=args.ckpt_upcast_attention,
             from_safetensors=args.model_path.endswith(".safetensors")
         )
-    else:    
+    else:
         if args.vae_path:
             vae = AutoencoderKL.from_pretrained(args.vae_path)
-            pipeline = StableDiffusionPipeline.from_pretrained(args.model_path,
+            pl = StableDiffusionPipeline.from_pretrained(args.model_path,
                 torch_dtype=dtype, vae=vae).to(device)
         else:
-            pipeline = StableDiffusionPipeline.from_pretrained(args.model_path,
-                torch_dtype=dtype).to(device)    
+            pl = StableDiffusionPipeline.from_pretrained(args.model_path,
+                torch_dtype=dtype).to(device)
 
-    convert_models(pipeline, args.output_path, args.opset, args.fp16)
+    if args.attention_slicing:
+        pl.enable_attention_slicing(args.attention_slicing)
+
+    convert_models(pl, args.output_path, args.opset, args.fp16)
     

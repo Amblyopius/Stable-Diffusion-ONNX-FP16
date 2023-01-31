@@ -5,8 +5,7 @@ This was mainly intended for use with AMD GPUs but should work just as well with
 I'd be very interested to hear of any results with Intel Arc.  
 
 **MOST IMPORTANT RECENT UPDATES:**  
-**- The conversion script has been renamed to avoid ambiguity (It can now do .ckpt too)**  
-**- The repository has been renamed to avoid ambiguity (ONNX DirectML will run on any recent card, not just AMD)**
+**- Thanks to a community suggestion, we now also generate models with attention slicing baked in
 
 This focuses specifically on making it easy to get FP16 models. When using FP16 the VRAM footprint is significantly reduced and speed goes up.
 
@@ -89,7 +88,7 @@ python test-txt2img.py --model "model\sd2_1base-fp16" --size 512 --seed 0
 You should now have 2 similar pictures. Note that there'll be differences between FP32 and FP16. But FP16 should not be specifically worse than FP32.
 The accuracy just shifts things a bit, but it may just as well shift them for the better. With the default prompt/seed I personally like the FP16 better.
 
-Next let's try do 768x768. This requires your card to have enough VRAM but it does run fine on for example 12GB VRAM. Interested in feedback on how it does on 8GB!  
+Next let's do 768x768. This requires your card to have enough VRAM but we'll make a VRAM friendly version too.  
 First make sure you're back on the sd_env_conv environment and then do:
 ```
 python conv_sd_to_onnx.py --model_path "stabilityai/stable-diffusion-2-1" --output_path "./model/sd2_1-fp16" --fp16
@@ -98,6 +97,17 @@ python conv_sd_to_onnx.py --model_path "stabilityai/stable-diffusion-2-1" --outp
 Here we aren't bothering with FP32 because it just requires too much VRAM. Once downloaded we'll just run our test again (in the sd_env environment of course):
 ```
 python test-txt2img.py --model "model\sd2_1-fp16" --size 768 --seed 0
+```
+
+This will work fine on 12GB VRAM and above but 8GB may already be a stretch. The more VRAM friendly version is next.
+```
+python conv_sd_to_onnx.py --model_path "stabilityai/stable-diffusion-2-1" --output_path "./model/sd2_1-fp16-autoslicing" --fp16 --attention-slicing auto
+```
+
+This model uses less VRAM but will be slightly slower when you're not VRAM limited. It'll allow you to use far larger resolutions than standard models.
+The output will be slightly different but should not be specifically worse. If you got the VRAM, see how well size 1024 works!
+```
+python test-txt2img.py --model "model\sd2_1-fp16-autoslicing" --size 768 --seed 0
 ```
 
 Now that we've got everything working and we can create pictures, let's get a GUI. We'll use ONNXDiffusersUI but make it so it doesn't break our workflow.  
