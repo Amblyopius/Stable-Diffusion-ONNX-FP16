@@ -24,8 +24,8 @@ import functools
 # Numpy is used to provide a random generator
 import numpy
 # We need to load images for img2img
-from PIL import Image
-
+# We want to save data to PNG
+from PIL import Image, PngImagePlugin
 
 # The pipelines
 from diffusers import OnnxStableDiffusionPipeline
@@ -156,6 +156,8 @@ for proj in args[1:] :
                     strengthlist=[runSettings['strength']]
                 else:
                     strengthlist=runSettings['strengthlist']
+                imgnr=len(schedulerlist)*len(promptlist)*len(seedlist)*len(stepslist)*len(scalelist)*len(strengthlist)
+                imgdone=0
                 for scheduler in schedulerlist:
                     if not sched[scheduler]:
                         scheduler="pndm"
@@ -168,16 +170,14 @@ for proj in args[1:] :
                                     for strength in strengthlist:
                                         if runSettings['task']=="img2img":
                                             filename=(
-                                                proj+"/result-p"+str(promptnum)+"-seed-"+str(seed)+
-                                                "-steps-"+str(steps)+"-"+scheduler+"-scale-"+
-                                                str(scale).replace(".","_")+"-strength-"+
-                                                str(strength).replace(".","_")+".png"
+                                                f"{proj}/result-p{promptnum}-seed{seed}-steps-{steps}-"+
+                                                f"{scheduler}-scale-"+str(scale).replace(".","_")+
+                                                "-strength-"+str(strength).replace(".","_")+".png"
                                             )
                                         else:
                                             filename=(
-                                                proj+"/result-p"+str(promptnum)+"-seed-"+str(seed)+
-                                                "-steps-"+str(steps)+"-"+scheduler+"-scale-"+
-                                                str(scale).replace(".","_")+".png"
+                                                f"{proj}/result-p{promptnum}-seed{seed}-steps-{steps}-"+
+                                                f"{scheduler}-scale-"+str(scale).replace(".","_")+".png"
                                             )
                                         if not os.path.isfile(filename):
                                             generator.seed(seed)
@@ -199,9 +199,19 @@ for proj in args[1:] :
                                                     num_inference_steps=steps,
                                                     guidance_scale=scale,
                                                     generator = generator).images[0]
-                                            image.save(filename)
+                                            metadata = PngImagePlugin.PngInfo()
+                                            metadata.add_text("Generator","Stable Diffusion ONNX https://github.com/Amblyopius/Stable-Diffusion-ONNX-FP16")
+                                            metadata.add_text("SD Model (local name)",model)
+                                            metadata.add_text("SD Prompt",prompt)
+                                            metadata.add_text("SD Negative Prompt",runSettings['negative_prompt'])
+                                            metadata.add_text("SD Scheduler",scheduler)
+                                            metadata.add_text("SD Steps",str(steps))
+                                            metadata.add_text("SD Guidance Scale",str(scale))
+                                            image.save(filename, pnginfo = metadata)
                                         else:
                                             print("Skipping existing image!")
+                                        imgdone+=1
+                                        print(f"Finished {imgdone}/{imgnr}")
                         promptnum+=1
                 del pipe
                 gc.collect()
