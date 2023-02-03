@@ -5,7 +5,7 @@ This was mainly intended for use with AMD GPUs but should work just as well with
 I'd be very interested to hear of any results with Intel Arc.  
 
 **MOST IMPORTANT RECENT UPDATES:**  
-**- Thanks to a community suggestion, we now also generate models with attention slicing baked in
+**- Thanks to a community suggestion, we now also generate models with attention slicing baked in**
 
 This focuses specifically on making it easy to get FP16 models. When using FP16 the VRAM footprint is significantly reduced and speed goes up.
 
