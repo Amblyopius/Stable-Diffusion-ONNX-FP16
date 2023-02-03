@@ -18,7 +18,7 @@ It currently accepts following values: ddim, deis, dpms_ms, dpms_ss, euler_anc, 
 If the value is not recognised, it'll switch to pndm. Not all schedulers have been extensively tested and may behave unexpectendly.
 - Guidance scale, set with the key 'scale'. You can also set a list of guidance scales to iterate over with the key 'scalelist'
 - Iteration steps, set with the key 'steps'. You can also set a list of steps to iterate over with the key 'stepslist'
-- Width and height, with the keys 'width' and 'height'. You can also set a list of resolutions to iterate over with the key 'reslist' (e.g. 'reslist': ["512x512"."512x768"])
+- Width and height, with the keys 'width' and 'height'. You can also set a list of resolutions to iterate over with the key 'reslist' (e.g. 'reslist': ["512x512","512x768"])
 - The seed, set with the key 'seed'. If you want to iterate over seeds you can define the end with the key 'seedend'.
 Alternatively, you can provide a list of seeds using the key 'seedlist'.
 - The task to perform, set with the key 'task', default is 'txt2img'. Only txt2img has been test enough, but it also supports img2img (more on that below).
