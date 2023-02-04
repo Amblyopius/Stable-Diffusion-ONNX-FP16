@@ -83,6 +83,12 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--subdirs",
+    action="store_true",
+    help="Add subdirs with settings.json to projects to run"
+)
+
+parser.add_argument(
     'project',
     nargs='+',
     type=str,
@@ -91,7 +97,16 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-for proj in args.project:
+projects=args.project
+if args.subdirs:
+    for proj in args.project:
+        obj = os.scandir(proj)
+        for entry in obj:
+            if entry.is_dir():
+                if os.path.isfile(f"{proj}/{entry.name}/settings.json"):
+                    projects.append(f"{proj}/{entry.name}")
+
+for proj in projects:
     print("Running project "+proj)
     # Check for directory
     if os.path.isdir(proj):
