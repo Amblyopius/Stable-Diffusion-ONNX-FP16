@@ -49,7 +49,7 @@ sd_env_conv\scripts\activate
 python -m pip install --upgrade pip
 pip install numpy==1.23.5
 pip install transformers diffusers torch ftfy spacy scipy safetensors
-pip install onnx onnxconverter_common onnxruntime-directml omegaconf
+pip install onnx onnxconverter-common onnxruntime-directml omegaconf
 ```
 
 This will be your environment when you're converting models from diffusers to ONNX.
