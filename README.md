@@ -37,30 +37,7 @@ pip install virtualenv
 python -m venv sd_env
 sd_env\scripts\activate
 python -m pip install --upgrade pip
-<<<<<<< Updated upstream
-pip install numpy==1.23.5
-pip install transformers diffusers torch ftfy spacy scipy
-pip install gradio omegaconf
-pip install --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ORT-Nightly/pypi/simple/ ort-nightly-directml
-```
-
-This will be your environment for when you're creating images.  
-Now do:
-```
-sd_env\scripts\deactivate
-```
-
-And then:
-```
-python -m venv sd_env_conv
-sd_env_conv\scripts\activate
-python -m pip install --upgrade pip
-pip install numpy==1.23.5
-pip install transformers diffusers torch ftfy spacy scipy safetensors
-pip install onnx onnxconverter-common onnxruntime-directml omegaconf
-=======
 pip install -r requirements.txt
->>>>>>> Stashed changes
 ```
 
 Now first make sure you have an account on https://huggingface.co/  
