@@ -47,7 +47,16 @@ And then on the commandline login using following command
 huggingface-cli login
 ```
 
-Now you're ready to download and convert models. Start with the basics and do:
+Now you're ready to download and convert models. Before we explain this, just a pointer on future use.  
+Whenever you want to make use of this post set up, open a command line, change into the directory and enable the environment.
+Say that you installed this on your D: drive in the root. You would open command line and then:
+```
+d:
+cd Stable-Diffusion-ONNX-FP16
+sd_env\scripts\activate
+```
+
+Remember this for whenver you want to use your installation. Let's now get to the fun part and convert some models:
 ```
 mkdir model
 python conv_sd_to_onnx.py --model_path "stabilityai/stable-diffusion-2-1-base" --output_path "./model/sd2_1base-fp32" 
