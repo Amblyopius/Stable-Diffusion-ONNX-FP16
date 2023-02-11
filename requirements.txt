@@ -1,0 +1,13 @@
+numpy==1.23.5
+transformers
+diffusers
+torch
+ftfy
+spacy
+scipy
+safetensors
+gradio
+omegaconf
+onnx
+onnxconverter-common
+onnxruntime-directml

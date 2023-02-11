@@ -5,11 +5,12 @@ This was mainly intended for use with AMD GPUs but should work just as well with
 I'd be very interested to hear of any results with Intel Arc.  
 
 **MOST IMPORTANT RECENT UPDATES:**  
+**- ONNX Runtime 1.14 has been released! Thanks to this we now have a significantly simplified installation process.  
 **- I have enabled GitHub discussions: If you have a generic question rather than an issue, start a discussion!**
 
-This focuses specifically on making it easy to get FP16 models. When using FP16 the VRAM footprint is significantly reduced and speed goes up.
+This focuses specifically on making it easy to get FP16 models. When using FP16, the VRAM footprint is significantly reduced and speed goes up.
 
-It's all fairly straightforward but It helps to be comfortable with command line
+It's all fairly straightforward, but It helps to be comfortable with command line.
 
 You can use these instructions to convert models to FP16 and then use them in any tool that allows you to load ONNX models.
 We'll demonstrate this by downloading and setting up ONNXDiffusersUI specifically for use with our installation (no need to follow the ONNXDiffusersUI setup).
@@ -17,12 +18,18 @@ We'll demonstrate this by downloading and setting up ONNXDiffusersUI specificall
 ## Set up
 
 First make sure you have Python 3.10 installed. You can get it here: https://www.python.org/downloads/  
-**NOTE:** Don't install 3.11 just yet cause not every prerequisite will be available if you do!
+**NOTE:** Don't install 3.11 just yet cause not every prerequisite may be available if you do!
 
 If you don't have git, get it here: https://gitforwindows.org/
 
-Create a directory somewhere which can contain all your code.  
+Pick a directory that can contain your Stable Diffusion installation (make sure you've the diskspace to store the models).
 Open the commandline (Powershell or Command Prompt) and change into the directory you will use.
+
+Start by cloning this repository:
+```
+git clone https://github.com/Amblyopius/Stable-Diffusion-ONNX-FP16
+cd Stable-Diffusion-ONNX-FP16
+```
 
 Do the following:
 ```
@@ -30,6 +37,7 @@ pip install virtualenv
 python -m venv sd_env
 sd_env\scripts\activate
 python -m pip install --upgrade pip
+<<<<<<< Updated upstream
 pip install numpy==1.23.5
 pip install transformers diffusers torch ftfy spacy scipy
 pip install gradio omegaconf
@@ -50,13 +58,10 @@ python -m pip install --upgrade pip
 pip install numpy==1.23.5
 pip install transformers diffusers torch ftfy spacy scipy safetensors
 pip install onnx onnxconverter-common onnxruntime-directml omegaconf
+=======
+pip install -r requirements.txt
+>>>>>>> Stashed changes
 ```
-
-This will be your environment when you're converting models from diffusers to ONNX.
-I prefer to keep these separate because of some conflicting libraries.
-Feel free to combine them if you know what you're doing.
-
-Download conv_sd_to_onnx.py from this repository and put it in your directory
 
 Now first make sure you have an account on https://huggingface.co/  
 When you do make sure to create a token on https://huggingface.co/settings/tokens  
@@ -72,61 +77,52 @@ python conv_sd_to_onnx.py --model_path "stabilityai/stable-diffusion-2-1-base" -
 python conv_sd_to_onnx.py --model_path "stabilityai/stable-diffusion-2-1-base" --output_path "./model/sd2_1base-fp16" --fp16
 ```
 
-You now have 2 models. These are geared towards creating 512x512 images. Get test-txt2img.py from the repository.  
-Your environment needs to be sd_env and not sd_env conv to run as otherwise you'll see poor performance or it may just create noise rather than images.  
-You can do this by having a second command line window open. Just remember activation is done like this:
-```
-sd_env\scripts\activate
-```
+You now have 2 models. These are geared towards creating 512x512 images.
 
-Now we'll run our test script twice (get it from this repository):
+Now we'll run our test script twice:
 ```
 python test-txt2img.py --model "model\sd2_1base-fp32" --size 512 --seed 0
 python test-txt2img.py --model "model\sd2_1base-fp16" --size 512 --seed 0
 ```
 
 You should now have 2 similar pictures. Note that there'll be differences between FP32 and FP16. But FP16 should not be specifically worse than FP32.
-The accuracy just shifts things a bit, but it may just as well shift them for the better. With the default prompt/seed I personally like the FP16 better.
+The accuracy just shifts things a bit, but it may just as well shift them for the better.
 
-Next let's do 768x768. This requires your card to have enough VRAM but we'll make a VRAM friendly version too.  
-First make sure you're back on the sd_env_conv environment and then do:
+Next let's do 768x768. This requires your card to have enough VRAM but we'll make a VRAM friendly version too.
+Here we aren't bothering with FP32 because it just requires too much VRAM. 
 ```
 python conv_sd_to_onnx.py --model_path "stabilityai/stable-diffusion-2-1" --output_path "./model/sd2_1-fp16" --fp16
-```
-
-Here we aren't bothering with FP32 because it just requires too much VRAM. Once downloaded we'll just run our test again (in the sd_env environment of course):
-```
 python test-txt2img.py --model "model\sd2_1-fp16" --size 768 --seed 0
 ```
 
+You should now have a 768x768 picture.
+
 This will work fine on 12GB VRAM and above but 8GB may already be a stretch. The more VRAM friendly version is next.
+
+This method uses less VRAM and will be slightly slower when you're not VRAM limited. But, it'll allow you to use far larger resolutions than standard models.
+The output will be slightly different but should not be specifically worse. If you got the VRAM, see how well size 1024 works!
+
 ```
 python conv_sd_to_onnx.py --model_path "stabilityai/stable-diffusion-2-1" --output_path "./model/sd2_1-fp16-autoslicing" --fp16 --attention-slicing auto
-```
-
-This model uses less VRAM but will be slightly slower when you're not VRAM limited. It'll allow you to use far larger resolutions than standard models.
-The output will be slightly different but should not be specifically worse. If you got the VRAM, see how well size 1024 works!
-```
 python test-txt2img.py --model "model\sd2_1-fp16-autoslicing" --size 768 --seed 0
 ```
 
 Now that we've got everything working and we can create pictures, let's get a GUI. We'll use ONNXDiffusersUI but make it so it doesn't break our workflow.  
-The active environment should be sd_env, we already installed the required python modules to support the UI.
-Let's first get the repository and copy what we need:
+First we clone the repository:
 ```
 git clone https://github.com/azuritecoin/OnnxDiffusersUI
-copy OnnxDiffusersUI\onnxUI.py .
-copy OnnxDiffusersUI\lpw_pipe.py .
 ```
-That's it, you're now ready to run the UI
+Now we run the UI
 ```
-python onnxUI.py
+python OnnxDiffusersUI\onnxUI.py
 ```
 It'll take some time to load and then in your browser you can go to http://127.0.0.1:7860 (only accessible on the host you're running it).  
 If you're done you can go back to the CMD window and press Ctrl+C and it will quit.
 
 Note that it expects your models to be in the model directory (which is why we put them there in the instructions).  
 You can find your history and all the pictures you created in the directory called output.
+
+If you want to learn more about the UI be sure to visit https://github.com/azuritecoin/OnnxDiffusersUI
 
 ## Advanced features
 ### Use alternative VAE
@@ -183,10 +179,6 @@ python conv_sd_to_onnx.py --help
 You should generally not need these but some advanced users may want to have them just in case.
 
 ## FAQ
-### Why are you using ORT Nightly?
-The release schedule for ONNX Runtime is quite long and as a result the speed difference between ORT Nightly and the official release is massive.
-While there's some risk there's a bug in ORT Nightly, it is just not worth throwing away the performance benefit for the tiny additional guarantee you get from running the official release.
-
 ### Do the converted models work with other ONNX DirectML based implementations?
 While not tested extensively: yes they should! They are not full FP16, at the interface level they are the same as FP32.
 They are completely valid drop in replacements and transparently run in FP16 on ORT DirectML.
@@ -198,7 +190,7 @@ It's generally better to start from a model in diffusers form but if you only ha
 
 ### Does this work for inpainting / img2img?
 Yes, it has been tested on the inpainting models and it works fine. Just like with txt2img, replacement is transparent as the interface is FP32.
-Additional example scripts may be added in the future to demonstrate it in code.
+Additional example scripts may be added in the future to demonstrate inpainting in code. For now mainly useful for use with OnnxDiffusersUI
 
 ### Why is Euler Ancestral not giving me the same image if I provide a seed?
 Due to how Euler Ancestral works, it adds noise as part of the scheduler that is apparently non-deterministic when interacting with ONNX diffusers pipeline.
@@ -215,8 +207,10 @@ It (currently) lacks features and flexibility but it has a faster and more VRAM 
 The current motto also is "Things move fast" which means that in a single day you may get both new features and performance boosts. (On my 6700XT SHARK is close to being twice as fast as ONNX FP16!)  
 There's also an onnxdiffusers channel on the Discord where you can ask for help if you want to stick to ONNX for a bit longer. We'll convert you to a dedicated SHARK user there.
 
+If you are an advanced AMD user, switch to Linux+ROCm. It'll be faster and you can use any torch based solution directly.
+
 ### Can you share any results?
-On my 6700XT I can get Stable Diffusion 2.1 768x768 down to 1.2s/it and 512x512 to 2.5it/s  
+On my 6700XT I can get Stable Diffusion 2.1 768x768 down to 1.15s/it and 2.1 base 512x512 to 2.7it/s  
 Reported working for Vega56 and doing 512x512 at 1.75it/s  
 Reported working for RX 480 8GB and doing 512x512 at 1.75s/it  
 Reported working for 5600XT 6GB and doing 512x512 at 1.43s/it (about 4x times faster than using ONNX FP32)
@@ -227,4 +221,3 @@ On your main drive go to your users home directory (C:\users\...) and you'll fin
 Point an environment variable HF_HOME towards where you want to have it store things instead.  
 (You can probably move the existing directory to a different drive and point HF_HOME towards it but I have not tested this ...)  
 Once resolved you can remove the huggingface directory from .cache
-
