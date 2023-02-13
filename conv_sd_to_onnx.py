@@ -26,6 +26,7 @@
 # v3.0 You can now provide an alternative VAE
 # v3.1 Align with diffusers 0.12.0
 # v4.0 Support ckpt conversion (--> renamed to conv_sd_to_onnx.py)
+# v5.0 Use ONNX Runtime Transformers for model optimisation
 
 import warnings
 import argparse
@@ -48,6 +49,33 @@ from diffusers.pipelines.stable_diffusion.convert_from_ckpt import load_pipeline
 warnings.filterwarnings('ignore','.*will be truncated.*')
 # We are ignoring prim::Constant type related warnings
 warnings.filterwarnings('ignore','.*The shape inference of prim::Constant type is missing.*')
+
+# ONNX Runtime Transformers offers ONNX model optimisation
+# It does not directly support DirectML but we can use a custom class
+# Based on onnx_model_unet.py in ONNX Runtime Transformers
+from onnx import ModelProto
+from onnxruntime.transformers.onnx_model_unet import UnetOnnxModel
+
+class UnetOnnxModelDML(UnetOnnxModel):
+    def __init__(self, model: ModelProto, num_heads: int = 0, hidden_size: int = 0):
+        """Initialize UNet ONNX Model.
+
+        Args:
+            model (ModelProto): the ONNX model
+            num_heads (int, optional): number of attention heads. Defaults to 0 (detect the parameter automatically).
+            hidden_size (int, optional): hidden dimension. Defaults to 0 (detect the parameter automatically).
+        """
+        assert (num_heads == 0 and hidden_size == 0) or (num_heads > 0 and hidden_size % num_heads == 0)
+
+        super().__init__(model, num_heads=num_heads, hidden_size=hidden_size)
+        
+    def optimize(self, enable_shape_inference=False):
+        if not enable_shape_inference:
+            self.disable_shape_inference()
+        self.fuse_layer_norm()        
+        self.fuse_gelu()        
+        self.preprocess()        
+        self.postprocess()
 
 def onnx_export(
     model,
@@ -90,7 +118,7 @@ def convert_to_fp16(
     onnx.save(fp16_model, model_path)
 
 @torch.no_grad()
-def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: int, fp16: bool):
+def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: int, fp16: bool, notune: bool):
     '''Converts the individual models in a path (UNET, VAE ...) to ONNX'''
 
     output_path = Path(output_path)
@@ -146,24 +174,32 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
         },
         opset=opset,
     )
+    del pipeline.unet
+    
     unet_model_path = str(unet_path.absolute().as_posix())
     unet_dir = os.path.dirname(unet_model_path)
     unet = onnx.load(unet_model_path)
     # clean up existing tensor files
     shutil.rmtree(unet_dir)
     os.mkdir(unet_dir)
+    
+    optimizer = UnetOnnxModelDML(unet, 0, 0)
+    if not notune:
+        optimizer.optimize()
+        optimizer.topological_sort()
+    if fp16:
+        optimizer.convert_float_to_float16(keep_io_types=True)
+    
     # collate external tensor files into one
     onnx.save_model(
-        unet,
+        optimizer.model,
         unet_model_path,
         save_as_external_data=True,
         all_tensors_to_one_file=True,
         location="weights.pb",
         convert_attribute=False,
-    )
-    if fp16:
-        convert_to_fp16(unet_model_path)
-    del pipeline.unet
+    )    
+    del unet, optimizer
 
     # VAE ENCODER
     vae_encoder = pipeline.vae
@@ -284,12 +320,21 @@ if __name__ == "__main__":
         action="store_true",
         help="Export Text Encoder and UNET in mixed `float16` mode"
     )
+    
+    parser.add_argument(
+        "--notune",
+        action="store_true",
+        help="Turn off tuning UNET with ONNX Runtime Transformers"
+    )
 
     parser.add_argument(
         "--attention-slicing",
-        choices={"auto"},
+        choices={"auto","max"},
         type=str,
-        help="Attention slicing, off by default. Can be set to auto. Reduces amount of VRAM used."
+        help=(
+            "Attention slicing reduces VRAM needed, off by default. Set to auto or max. "
+            "(Warning: max slows down conversion considerably!)"
+        )
     )
 
     parser.add_argument(
@@ -372,5 +417,5 @@ if __name__ == "__main__":
     if args.attention_slicing:
         pl.enable_attention_slicing(args.attention_slicing)
 
-    convert_models(pl, args.output_path, args.opset, args.fp16)
+    convert_models(pl, args.output_path, args.opset, args.fp16, args.notune)
     
