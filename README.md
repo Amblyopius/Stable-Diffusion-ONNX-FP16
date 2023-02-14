@@ -127,7 +127,7 @@ python conv_sd_to_onnx.py --model_path "runwayml/stable-diffusion-v1-5" --output
 ```
 
 ### Clip Skip
-For some models people will suggest using "Clip Skip" for better results. As we can't arbitrarily change this with ONNX we need to decide on it at model creation.  
+For some models people will suggest using "Clip Skip" for better results. As we can't arbitrarily change this with ONNX, we need to decide on it at model creation.  
 Therefore there's --clip-skip which you can set to 2, 3 or 4.  
 
 Example:
@@ -135,7 +135,8 @@ Example:
 python conv_sd_to_onnx.py --model_path "Linaqruf/anything-v3.0" --output_path "./model/anythingv3_fp16_cs2" --fp16 --clip-skip 2
 ```
 
-Clip Skip results in a change to the Text Encoder. To stay compatible with other implementations we use the same numbering where 1 is the default behaviour and 2 skips 1 layer.
+Clip Skip results in a change to the Text Encoder. 
+To stay compatible with other implementations we use the same numbering where 1 is the default behaviour and 2 skips 1 layer.
 This ensures that you see similar behaviour to other implementations when setting the same number for Clip Skip.
 
 ### Reducing VRAM usage
