@@ -39,7 +39,7 @@ from torch.onnx import export
 import safetensors
 
 import onnx
-from onnxconverter_common import convert_float_to_float16
+from onnxruntime.transformers.float16 import convert_float_to_float16
 from diffusers.models import AutoencoderKL
 from diffusers import OnnxRuntimeModel, OnnxStableDiffusionPipeline, StableDiffusionPipeline
 from diffusers.pipelines.stable_diffusion.convert_from_ckpt import load_pipeline_from_original_stable_diffusion_ckpt
@@ -68,13 +68,12 @@ class UnetOnnxModelDML(UnetOnnxModel):
         assert (num_heads == 0 and hidden_size == 0) or (num_heads > 0 and hidden_size % num_heads == 0)
 
         super().__init__(model, num_heads=num_heads, hidden_size=hidden_size)
-        
+
     def optimize(self, enable_shape_inference=False):
         if not enable_shape_inference:
             self.disable_shape_inference()
-        self.fuse_layer_norm()        
-        self.fuse_gelu()        
-        self.preprocess()        
+        self.fuse_layer_norm()
+        self.preprocess()
         self.postprocess()
 
 def onnx_export(
@@ -175,21 +174,19 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
         opset=opset,
     )
     del pipeline.unet
-    
+
     unet_model_path = str(unet_path.absolute().as_posix())
     unet_dir = os.path.dirname(unet_model_path)
     unet = onnx.load(unet_model_path)
     # clean up existing tensor files
     shutil.rmtree(unet_dir)
     os.mkdir(unet_dir)
-    
+
     optimizer = UnetOnnxModelDML(unet, 0, 0)
     if not notune:
         optimizer.optimize()
         optimizer.topological_sort()
-    if fp16:
-        optimizer.convert_float_to_float16(keep_io_types=True)
-    
+
     # collate external tensor files into one
     onnx.save_model(
         optimizer.model,
@@ -198,7 +195,9 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
         all_tensors_to_one_file=True,
         location="weights.pb",
         convert_attribute=False,
-    )    
+    )
+    if fp16:
+        convert_to_fp16(unet_model_path)
     del unet, optimizer
 
     # VAE ENCODER
@@ -320,7 +319,7 @@ if __name__ == "__main__":
         action="store_true",
         help="Export Text Encoder and UNET in mixed `float16` mode"
     )
-    
+
     parser.add_argument(
         "--notune",
         action="store_true",
@@ -333,7 +332,7 @@ if __name__ == "__main__":
         type=str,
         help=(
             "Attention slicing reduces VRAM needed, off by default. Set to auto or max. "
-            "(Warning: max slows down conversion considerably!)"
+            "WARNING: max implies --notune"
         )
     )
 
@@ -414,8 +413,12 @@ if __name__ == "__main__":
             pl = StableDiffusionPipeline.from_pretrained(args.model_path,
                 torch_dtype=dtype).to(device)
 
+    blocktune=False
     if args.attention_slicing:
+        if args.attention_slicing == "max":
+            blocktune=True
+            print ("WARNING: attention_slicing max implies --notune")
         pl.enable_attention_slicing(args.attention_slicing)
 
-    convert_models(pl, args.output_path, args.opset, args.fp16, args.notune)
+    convert_models(pl, args.output_path, args.opset, args.fp16, args.notune or blocktune)
     
