@@ -33,6 +33,8 @@ import argparse
 import os
 import shutil
 from pathlib import Path
+import json
+import tempfile
 
 import torch
 from torch.onnx import export
@@ -337,6 +339,19 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--clip_skip",
+        choices={2,3,4},
+        type=int,
+        help="Add permanent clip skip to ONNX model."
+    )
+
+    parser.add_argument(
+        "--diffusers-output",
+        type=str,
+        help="Directory to dump a pre-conversion copy in diffusers format in."
+    )
+
+    parser.add_argument(
         "--ckpt-original-config-file",
         default=None,
         type=str,
@@ -413,12 +428,27 @@ if __name__ == "__main__":
             pl = StableDiffusionPipeline.from_pretrained(args.model_path,
                 torch_dtype=dtype).to(device)
 
+    if args.clip_skip:
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            pl.save_pretrained(tmpdirname)
+            confname=f"{tmpdirname}/text_encoder/config.json"
+            with open(confname, 'r', encoding="utf-8") as f:
+                clipconf = json.load(f)
+                clipconf['num_hidden_layers'] = clipconf['num_hidden_layers']-args.clip_skip+1
+            with open(confname, 'w', encoding="utf-8") as f:
+                json.dump(clipconf, f, indent=1)
+            pl = StableDiffusionPipeline.from_pretrained(tmpdirname,
+                torch_dtype=dtype).to(device)
+
     blocktune=False
     if args.attention_slicing:
         if args.attention_slicing == "max":
             blocktune=True
             print ("WARNING: attention_slicing max implies --notune")
         pl.enable_attention_slicing(args.attention_slicing)
+
+    if args.diffusers_output:
+        pl.save_pretrained(args.diffusers_output)
 
     convert_models(pl, args.output_path, args.opset, args.fp16, args.notune or blocktune)
     
