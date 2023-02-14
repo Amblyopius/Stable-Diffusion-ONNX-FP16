@@ -126,6 +126,18 @@ If you have a VAE locally on disk in diffusers format that you want to use, this
 python conv_sd_to_onnx.py --model_path "runwayml/stable-diffusion-v1-5" --output_path "./model/sd1_5-fp16-vae_2_1" --vae_path "stable-diffusion-2-1-base/vae" --fp16
 ```
 
+### Clip Skip
+For some models people will suggest using "Clip Skip" for better results. As we can't arbitrarily change this with ONNX we need to decide on it at model creation.  
+Therefore there's --clip-skip which you can set to 2, 3 or 4.  
+
+Example:
+```
+python conv_sd_to_onnx.py --model_path "Linaqruf/anything-v3.0" --output_path "./model/anythingv3_fp16_cs2" --fp16 --clip-skip 2
+```
+
+Clip Skip results in a change to the Text Encoder. To stay compatible with other implementations we use the same numbering where 1 is the default behaviour and 2 skips 1 layer.
+This ensures that you see similar behaviour to other implementations when setting the same number for Clip Skip.
+
 ### Reducing VRAM usage
 While FP16 already uses a lot less VRAM, you may still run into VRAM issues. The easiest solution is to load the Text Encoder on CPU rather than GPU. The Text Encoder is only used as part of prompt parsing and not during the iterations.
 You can expect some additional latency when the Text Encoder is on CPU, but this will be fairly minor as it is not compute intensive. You also gain more than that back during the iterations if you're near your VRAM limit.
