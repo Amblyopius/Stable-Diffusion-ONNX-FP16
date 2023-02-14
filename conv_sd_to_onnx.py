@@ -339,7 +339,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--clip_skip",
+        "--clip-skip",
         choices={2,3,4},
         type=int,
         help="Add permanent clip skip to ONNX model."
