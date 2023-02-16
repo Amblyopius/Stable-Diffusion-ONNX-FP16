@@ -53,7 +53,7 @@ Remember this for whenver you want to use your installation. Let's now get to th
 The extra time spend on creating the model is saved back by having it run fine on 4GB VRAM.
 ```
 mkdir model
-python conv_sd_to_onnx.py --model_path "stabilityai/stable-diffusion-2-1-base" --output_path "./model/sd2_1base-fp16-maxslicing" --fp16 --autoslicing max
+python conv_sd_to_onnx.py --model_path "stabilityai/stable-diffusion-2-1-base" --output_path "./model/sd2_1base-fp16-maxslicing" --fp16 --attention_slicing max
 ```
 
 That's your first model. Let's do a test:
