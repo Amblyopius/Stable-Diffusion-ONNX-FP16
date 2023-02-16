@@ -59,7 +59,7 @@ python conv_sd_to_onnx.py --model_path "stabilityai/stable-diffusion-2-1-base" -
 That's your first model. Let's do a test:
 
 ```
-python test-txt2img.py --model "model\sd2_1base-fp16" --size 512 --seed 0 --cpu-textenc
+python test-txt2img.py --model "model\sd2_1base-fp16-maxslicing" --size 512 --seed 0 --cpu-textenc
 ```
 
 You should now have your first picture in the current directory.
