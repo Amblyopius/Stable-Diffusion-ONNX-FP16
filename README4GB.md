@@ -59,7 +59,7 @@ python conv_sd_to_onnx.py --model_path "stabilityai/stable-diffusion-2-1-base" -
 That's your first model. Let's do a test:
 
 ```
-python test-txt2img.py --model "model\sd2_1base-fp16-maxslicing" --size 512 --seed 0 --cpu-textenc
+python test-txt2img.py --model "model\sd2_1base-fp16-maxslicing" --size 512 --seed 0 --cpu-textenc --cpu-vae
 ```
 
 You should now have your first picture in the current directory.
@@ -71,7 +71,7 @@ git clone https://github.com/azuritecoin/OnnxDiffusersUI
 ```
 Now we run the UI
 ```
-python OnnxDiffusersUI\onnxUI.py --cpu-textenc
+python OnnxDiffusersUI\onnxUI.py --cpu-textenc --cpu-vaedec
 ```
 It'll take some time to load and then in your browser you can go to http://127.0.0.1:7860 (only accessible on the host you're running it).  
 If you're done you can go back to the CMD window and press Ctrl+C and it will quit.
