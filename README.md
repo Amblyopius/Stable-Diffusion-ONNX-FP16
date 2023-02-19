@@ -121,8 +121,13 @@ Say you want to have SD1.5 but with the updated MSE VAE that was released later 
 ```
 python conv_sd_to_onnx.py --model_path "runwayml/stable-diffusion-v1-5" --output_path "./model/sd1_5-fp16-vae_ft_mse" --vae_path "stabilityai/sd-vae-ft-mse" --fp16
 ```
-This works as the VAE is specifically released seperately.  
-If you have a VAE locally on disk in diffusers format that you want to use, this can be done too. Say we have SD 2.1 Base downloaded and we want to use SD1.5 but with the VAE from SD 2.1 Base:
+
+You can also load a vae from a full model on huggingface. You add /vae to make that clear. Say you need the VAE from Anything v3.0:
+```
+python conv_sd_to_onnx.py --model_path "runwayml/stable-diffusion-v1-5" --output_path "./model/sd1_5-fp16-vae_anythingv3" --vae_path "Linaqruf/anything-v3.0/vae" --fp16
+```
+
+Or if the model is on your local disk, you can just use the local directory. Say you have stable-diffusion 2.1 base on disk, you could it like this:
 ```
 python conv_sd_to_onnx.py --model_path "runwayml/stable-diffusion-v1-5" --output_path "./model/sd1_5-fp16-vae_2_1" --vae_path "stable-diffusion-2-1-base/vae" --fp16
 ```

@@ -420,13 +420,18 @@ if __name__ == "__main__":
             from_safetensors=args.model_path.endswith(".safetensors")
         )
     else:
-        if args.vae_path:
-            vae = AutoencoderKL.from_pretrained(args.vae_path)
-            pl = StableDiffusionPipeline.from_pretrained(args.model_path,
+        pl = StableDiffusionPipeline.from_pretrained(args.model_path,
+            torch_dtype=dtype).to(device)
+
+    if args.vae_path:
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            pl.save_pretrained(tmpdirname)
+            if args.vae_path.endswith('/vae') and not os.path.isdir(args.vae_path):
+                vae = AutoencoderKL.from_pretrained(args.vae_path[:-4],subfolder='vae')
+            else:
+                vae = AutoencoderKL.from_pretrained(args.vae_path)
+            pl = StableDiffusionPipeline.from_pretrained(tmpdirname,
                 torch_dtype=dtype, vae=vae).to(device)
-        else:
-            pl = StableDiffusionPipeline.from_pretrained(args.model_path,
-                torch_dtype=dtype).to(device)
 
     if args.clip_skip:
         with tempfile.TemporaryDirectory() as tmpdirname:
