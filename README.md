@@ -5,6 +5,7 @@ This was mainly intended for use with AMD GPUs but should work just as well with
 I'd be very interested to hear of any results with Intel Arc.  
 
 **MOST IMPORTANT RECENT UPDATES:**  
+**- Added an ONNX Instruct pix2pix pipeline (documented in additional section after standard install)**  
 **- Added support for Clip Skip**  
 **- ONNX Runtime 1.14 has been released! Thanks to this we now have a significantly simplified installation process.**  
 **- I have enabled GitHub discussions: If you have a generic question rather than an issue, start a discussion!**
@@ -112,6 +113,24 @@ You can find your history and all the pictures you created in the directory call
 If you want to learn more about the UI be sure to visit https://github.com/azuritecoin/OnnxDiffusersUI
 
 ## Advanced features
+### Support for Instruct pix2pix
+Recently a special Stable Diffusion model was released, allowing you to have AI edit images based on instructions.
+Make sure you read the original documentation here: https://www.timothybrooks.com/instruct-pix2pix
+
+A pipeline was added to diffusers, but currently Huggingface does not add ONNX equivalents.
+In this repository I included the required ONNX pipeline and a basic UI (to simplify testing before it gets added to ONNXDiffusersUI)
+
+You can convert the model using this command (it'll fetch it from huggingface):
+```
+conv_sd_to_onnx.py --model_path "timbrooks/instruct-pix2pix" --output_path "./model/ip2p-base-fp16-vae_ft_mse" --vae_path "stabilityai/sd-vae-ft-mse" --fp16
+```
+Once converted you can run the included UI like this:
+```
+python pix2pixUI.py
+```
+You'll need an image to start from (you can always create one with Stable Diffusion) and then you can test the pipeline.
+This first version is _very_ basic and you'll need to save the results (when you want them) using "save image as" in your browser.
+
 ### Use alternative VAE
 Some models will suggest using an alternative VAE.
 It's possible to copy the model.onnx from an existing directory and put it in another one, but you may want to keep the conversion command line you use for reference.
