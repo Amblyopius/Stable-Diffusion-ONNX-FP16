@@ -35,7 +35,7 @@ if __name__ == "__main__":
             with gr.Column(scale=1):
                 guide = gr.Slider(1.1, 10, value=3, step=0.1, label="Text guidance")
             with gr.Column(scale=1):
-                iguide = gr.Slider(1.1, 10, value=1.0, step=0.1, label="Image guidance")
+                iguide = gr.Slider(1, 10, value=1.1, step=0.1, label="Image guidance")
             with gr.Column(scale=1):
                 steps = gr.Slider(10,100, value=30, step=1, label="Steps")
         with gr.Row():
