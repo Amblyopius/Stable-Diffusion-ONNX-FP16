@@ -4,18 +4,20 @@ import gradio as gr
 from pipeline_onnx_stable_diffusion_instruct_pix2pix import OnnxStableDiffusionInstructPix2PixPipeline
 from diffusers import DDIMScheduler,  EulerAncestralDiscreteScheduler, LMSDiscreteScheduler
 
-def pix2pix(input_img, prompt, guide, iguide, steps):
-	generator=np.random
-	generator.seed(42)
-	img = pipe(
-		prompt=prompt,
-		image=input_img,
-		num_inference_steps=steps,
-		guidance_scale=guide,
-		image_guidance_scale=iguide,
-		generator=generator).images[0]
-	
-	return img
+def pix2pix(input_img, prompt, guide, iguide, steps, seed):
+    if seed == -1:
+        generator=None
+    else:
+        generator=np.random
+        generator.seed(seed)
+    img = pipe(
+        prompt=prompt,
+        image=input_img,
+        num_inference_steps=steps,
+        guidance_scale=guide,
+        image_guidance_scale=iguide,
+        generator=generator).images[0]
+    return img
 		
 if __name__ == "__main__":	
     model="./model/ip2p-base-fp16-vae_ft_mse"
@@ -28,7 +30,7 @@ if __name__ == "__main__":
     with gr.Blocks(title=title, css=css) as demo:
         with gr.Row():
             with gr.Column(scale=1):
-                prompt= gr.Number(value=-1, label="seed")
+                seed = gr.Number(value=-1, label="seed", precision=0)
             with gr.Column(scale=14):
                 prompt = gr.Textbox(value="", lines=2, label="prompt")
         with gr.Row():
@@ -45,7 +47,7 @@ if __name__ == "__main__":
                 image_out = gr.Image(value=None, label="Output Image", elem_id="imgbox").style(width=600,height=600)
         gen_btn = gr.Button("Generate", variant="primary", elem_id="gen_button")        
     
-        inputs=[input_img, prompt, guide, iguide, steps]
+        inputs=[input_img, prompt, guide, iguide, steps, seed]
         gen_btn.click(fn=pix2pix, inputs=inputs, outputs=[image_out])
     
     demo.launch()
