@@ -122,7 +122,7 @@ In this repository I included the required ONNX pipeline and a basic UI (to simp
 
 You can convert the model using this command (it'll fetch it from huggingface):
 ```
-python conv_sd_to_onnx.py --model_path "timbrooks/instruct-pix2pix" --output_path "./model/ip2p-base-fp16-vae_ft_mse" --vae_path "stabilityai/sd-vae-ft-mse" --fp16
+python conv_sd_to_onnx.py --model_path "timbrooks/instruct-pix2pix" --output_path "./model/ip2p-base-fp16-vae_ft_mse-autoslicing" --vae_path "stabilityai/sd-vae-ft-mse" --fp16 --attention-slicing auto
 ```
 Once converted you can run the included UI like this:
 ```
