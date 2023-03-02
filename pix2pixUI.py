@@ -20,7 +20,7 @@ def pix2pix(input_img, prompt, guide, iguide, steps, seed):
     return img
 		
 if __name__ == "__main__":	
-    model="./model/ip2p-base-fp16-vae_ft_mse"
+    model="./model/ip2p-base-fp16-vae_ft_mse-autoslicing"
     pipe = OnnxStableDiffusionInstructPix2PixPipeline.from_pretrained(model, provider="DmlExecutionProvider", safety_checker=None)
     pipe.scheduler=EulerAncestralDiscreteScheduler.from_pretrained(model, subfolder="scheduler")
 
