@@ -43,25 +43,17 @@ from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
 
-# Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion_img2img.preprocess
+# Simplified and ONNX specific version (only allows 1 image, np over torch)
 def preprocess(image):
-    if isinstance(image, torch.Tensor):
+    if isinstance(image, np.ndarray):
         return image
-    elif isinstance(image, PIL.Image.Image):
-        image = [image]
-
-    if isinstance(image[0], PIL.Image.Image):
-        w, h = image[0].size
-        w, h = map(lambda x: x - x % 8, (w, h))  # resize to integer multiple of 8
-
-        image = [np.array(i.resize((w, h), resample=PIL_INTERPOLATION["lanczos"]))[None, :] for i in image]
-        image = np.concatenate(image, axis=0)
-        image = np.array(image).astype(np.float32) / 255.0
-        image = image.transpose(0, 3, 1, 2)
-        image = 2.0 * image - 1.0
-        image = torch.from_numpy(image)
-    elif isinstance(image[0], torch.Tensor):
-        image = torch.cat(image, dim=0)
+        
+    w, h = image.size
+    w, h = map(lambda x: x - x % 8, (w, h))  # resize to integer multiple of 8
+    image = np.array(image.resize((w, h), resample=PIL_INTERPOLATION["lanczos"]))[None, :]
+    image = np.array(image).astype(np.float32) / 255.0
+    image = image.transpose(0, 3, 1, 2)
+    image = 2.0 * image - 1.0
     return image
 
 
@@ -300,7 +292,7 @@ class OnnxStableDiffusionInstructPix2PixPipeline(DiffusionPipeline):
         )
 
         # 3. Preprocess image
-        image = preprocess(image).cpu().numpy()
+        image = preprocess(image)
         height, width = image.shape[-2:]
 
         # 4. set timesteps
@@ -540,13 +532,9 @@ class OnnxStableDiffusionInstructPix2PixPipeline(DiffusionPipeline):
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline.decode_latents
     def decode_latents(self, latents):
         latents = 1 / 0.18215 * latents
-        #image = self.vae.decode(latents).sample
         image = np.concatenate(
             [self.vae_decoder(latent_sample=latents[i : i + 1])[0] for i in range(latents.shape[0])]
         )
-        #image = (image / 2 + 0.5).clamp(0, 1)
-        # we always cast to float32 as this does not cause significant overhead and is compatible with bfloat16
-        #image = image.cpu().permute(0, 2, 3, 1).float().numpy()
         image = np.clip(image / 2 + 0.5, 0, 1)
         image = image.transpose((0, 2, 3, 1))
         return image
