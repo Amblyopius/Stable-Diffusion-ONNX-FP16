@@ -426,10 +426,8 @@ if __name__ == "__main__":
     if args.vae_path:
         with tempfile.TemporaryDirectory() as tmpdirname:
             pl.save_pretrained(tmpdirname)
-            if args.vae_path.endswith('/vae') and not os.path.isdir(args.vae_path):
+            if args.vae_path.endswith('/vae'):
                 vae = AutoencoderKL.from_pretrained(args.vae_path[:-4],subfolder='vae')
-            else:
-                vae = AutoencoderKL.from_pretrained(args.vae_path)
             pl = StableDiffusionPipeline.from_pretrained(tmpdirname,
                 torch_dtype=dtype, vae=vae).to(device)
 
