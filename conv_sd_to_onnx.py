@@ -428,6 +428,8 @@ if __name__ == "__main__":
             pl.save_pretrained(tmpdirname)
             if args.vae_path.endswith('/vae'):
                 vae = AutoencoderKL.from_pretrained(args.vae_path[:-4],subfolder='vae')
+            else:
+                vae = AutoencoderKL.from_pretrained(args.vae_path)
             pl = StableDiffusionPipeline.from_pretrained(tmpdirname,
                 torch_dtype=dtype, vae=vae).to(device)
 
