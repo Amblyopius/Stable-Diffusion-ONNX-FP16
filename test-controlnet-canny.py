@@ -24,7 +24,6 @@ opts = ort.SessionOptions()
 opts.enable_cpu_mem_arena = False
 opts.enable_mem_pattern = False
 
-# controlnet = OnnxRuntimeModel.from_pretrained("../model/sd1_5-fp16-cn_canny/cnet", sess_options=opts, provider="DmlExecutionProvider")
 pipe = OnnxStableDiffusionControlNetPipeline.from_pretrained(
     "model/sd1_5-fp16-vae_ft_mse-autoslicing-cn_canny",
     sess_options=opts, 
