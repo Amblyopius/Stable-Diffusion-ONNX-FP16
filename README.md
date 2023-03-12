@@ -5,6 +5,7 @@ This was mainly intended for use with AMD GPUs but should work just as well with
 I'd be very interested to hear of any results with Intel Arc.  
 
 **MOST IMPORTANT RECENT UPDATES:**  
+**- Added an ONNX ControlNet pipeline (documented in additional section after standard install)**  
 **- Added an ONNX Instruct pix2pix pipeline (documented in additional section after standard install)**  
 **- Added support for Clip Skip**  
 **- ONNX Runtime 1.14 has been released! Thanks to this we now have a significantly simplified installation process.**  
@@ -113,6 +114,34 @@ You can find your history and all the pictures you created in the directory call
 If you want to learn more about the UI be sure to visit https://github.com/azuritecoin/OnnxDiffusersUI
 
 ## Advanced features
+### Support for ControlNet
+ControlNet was recently introduced. It allows conditional control on Text-to-Image Diffusion Models. If you want more in-depth information,
+get it here: https://github.com/lllyasviel/ControlNet
+
+As it has now been added to Diffusers I've added a fairly "elegant" ONNX implementation.
+
+The idea behind the implementation is:  
+- We use the same single tool to convert models  
+- We can load the Pipeline from disk by referencing a single model
+
+This has only 1 downside, it is not the most disk friendly solution as you'll get some duplication.
+We may eventually have to opt for a different disk layout for ONNX models.
+
+The current implementation consists of a simple demo. More to follow soon!
+
+First let's get ourselves a working model:
+```
+python conv_sd_to_onnx.py --model_path "runwayml/stable-diffusion-v1-5" --output_path "./model/sd1_5-fp16-vae_ft_mse-autoslicing-cn_canny" --controlnet_path "lllyasviel/sd-controlnet-canny" --fp16 --attention-slicing auto --vae_path "stabilityai/sd-vae-ft-mse"
+```
+This model is an SD 1.5 model combined with Controlnet Canny. Now let's run the test script:
+```
+python test-controlnet-canny.py
+```
+Once the test is done you'll have an image called controlnet-canny-test.png.
+The new image is entirely different but the shape is very similar to the original input image.
+
+You can look at the test-controlnet-canny.py to see how it works.
+
 ### Support for Instruct pix2pix
 Recently a special Stable Diffusion model was released, allowing you to have AI edit images based on instructions.
 Make sure you read the original documentation here: https://www.timothybrooks.com/instruct-pix2pix
