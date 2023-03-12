@@ -27,6 +27,7 @@
 # v3.1 Align with diffusers 0.12.0
 # v4.0 Support ckpt conversion (--> renamed to conv_sd_to_onnx.py)
 # v5.0 Use ONNX Runtime Transformers for model optimisation
+# v6.0 Support ControlNet
 
 import warnings
 import argparse
@@ -35,6 +36,7 @@ import shutil
 from pathlib import Path
 import json
 import tempfile
+from typing import Union, Optional, Tuple
 
 import torch
 from torch.onnx import export
@@ -43,7 +45,14 @@ import safetensors
 import onnx
 from onnxruntime.transformers.float16 import convert_float_to_float16
 from diffusers.models import AutoencoderKL
-from diffusers import OnnxRuntimeModel, OnnxStableDiffusionPipeline, StableDiffusionPipeline
+from diffusers import (
+    OnnxRuntimeModel,
+    OnnxStableDiffusionPipeline,
+    StableDiffusionPipeline,
+    ControlNetModel,
+    UNet2DConditionModel
+)
+from diffusers.models.unet_2d_condition import UNet2DConditionOutput
 from diffusers.pipelines.stable_diffusion.convert_from_ckpt import load_pipeline_from_original_stable_diffusion_ckpt
 
 # To improve future development and testing, warnings should be limited to what is somewhat useful
@@ -77,6 +86,44 @@ class UnetOnnxModelDML(UnetOnnxModel):
         self.fuse_layer_norm()
         self.preprocess()
         self.postprocess()
+
+# We need a wrapper for UNet2DConditionModel as we need to pass tuples
+# We can't properly export tuples of Tensors with ONNX
+
+class UNet2DConditionModel_Cnet(UNet2DConditionModel):
+    def forward(
+        self,
+        sample: torch.FloatTensor,
+        timestep: Union[torch.Tensor, float, int],
+        encoder_hidden_states: torch.Tensor,
+        down_block_add_res00: Optional[torch.Tensor] = None,
+        down_block_add_res01: Optional[torch.Tensor] = None,
+        down_block_add_res02: Optional[torch.Tensor] = None,
+        down_block_add_res03: Optional[torch.Tensor] = None,
+        down_block_add_res04: Optional[torch.Tensor] = None,
+        down_block_add_res05: Optional[torch.Tensor] = None,
+        down_block_add_res06: Optional[torch.Tensor] = None,
+        down_block_add_res07: Optional[torch.Tensor] = None,
+        down_block_add_res08: Optional[torch.Tensor] = None,
+        down_block_add_res09: Optional[torch.Tensor] = None,
+        down_block_add_res10: Optional[torch.Tensor] = None,
+        down_block_add_res11: Optional[torch.Tensor] = None,
+        mid_block_additional_residual: Optional[torch.Tensor] = None,
+        return_dict: bool = False,
+    ) -> Union[UNet2DConditionOutput, Tuple]:
+        down_block_add_res = (
+            down_block_add_res00, down_block_add_res01, down_block_add_res02,
+            down_block_add_res03, down_block_add_res04, down_block_add_res05,
+            down_block_add_res06, down_block_add_res07, down_block_add_res08,
+            down_block_add_res09, down_block_add_res10, down_block_add_res11)
+        return super().forward(
+            sample = sample,
+            timestep = timestep,
+            encoder_hidden_states = encoder_hidden_states,
+            down_block_additional_residuals = down_block_add_res,
+            mid_block_additional_residual = mid_block_additional_residual,
+            return_dict = return_dict
+        )
 
 def onnx_export(
     model,
@@ -119,7 +166,7 @@ def convert_to_fp16(
     onnx.save(fp16_model, model_path)
 
 @torch.no_grad()
-def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: int, fp16: bool, notune: bool):
+def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: int, fp16: bool, notune: bool, controlnet_path: str):
     '''Converts the individual models in a path (UNET, VAE ...) to ONNX'''
 
     output_path = Path(output_path)
@@ -156,25 +203,123 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
     unet_in_channels = pipeline.unet.config.in_channels
     unet_sample_size = pipeline.unet.config.sample_size
     unet_path = output_path / "unet" / "model.onnx"
-    onnx_export(
-        pipeline.unet,
-        model_args=(
-            torch.randn(2, unet_in_channels, unet_sample_size,
-                unet_sample_size).to(device=device, dtype=dtype),
-            torch.randn(2).to(device=device, dtype=dtype),
-            torch.randn(2, num_tokens, text_hidden_size).to(device=device, dtype=dtype),
-            False,
-        ),
-        output_path=unet_path,
-        ordered_input_names=["sample", "timestep", "encoder_hidden_states", "return_dict"],
-        output_names=["out_sample"],  # has to be different from "sample" for correct tracing
-        dynamic_axes={
-            "sample": {0: "batch", 1: "channels", 2: "height", 3: "width"},
-            "timestep": {0: "batch"},
-            "encoder_hidden_states": {0: "batch", 1: "sequence"},
-        },
-        opset=opset,
-    )
+    if controlnet_path:
+        # reload UNET to get an ONNX exportable version with ControlNet support
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            pl.unet.save_pretrained(tmpdirname)
+            controlnet_unet=UNet2DConditionModel_Cnet.from_pretrained(tmpdirname)
+
+        onnx_export(
+            controlnet_unet,
+            model_args=(
+                torch.randn(2, unet_in_channels, unet_sample_size,
+                    unet_sample_size).to(device=device, dtype=dtype),
+                torch.randn(2).to(device=device, dtype=dtype),
+                torch.randn(2, num_tokens, text_hidden_size).to(device=device, dtype=dtype),
+                torch.randn(2, 320, unet_sample_size, unet_sample_size).to(device=device, dtype=dtype),
+                torch.randn(2, 320, unet_sample_size, unet_sample_size).to(device=device, dtype=dtype),
+                torch.randn(2, 320, unet_sample_size, unet_sample_size).to(device=device, dtype=dtype),
+                torch.randn(2, 320, unet_sample_size//2,unet_sample_size//2).to(device=device, dtype=dtype),
+                torch.randn(2, 640, unet_sample_size//2,unet_sample_size//2).to(device=device, dtype=dtype),
+                torch.randn(2, 640, unet_sample_size//2,unet_sample_size//2).to(device=device, dtype=dtype),
+                torch.randn(2, 640, unet_sample_size//4,unet_sample_size//4).to(device=device, dtype=dtype),
+                torch.randn(2, 1280, unet_sample_size//4,unet_sample_size//4).to(device=device, dtype=dtype),
+                torch.randn(2, 1280, unet_sample_size//4,unet_sample_size//4).to(device=device, dtype=dtype),
+                torch.randn(2, 1280, unet_sample_size//8,unet_sample_size//8).to(device=device, dtype=dtype),
+                torch.randn(2, 1280, unet_sample_size//8,unet_sample_size//8).to(device=device, dtype=dtype),
+                torch.randn(2, 1280, unet_sample_size//8,unet_sample_size//8).to(device=device, dtype=dtype),
+                torch.randn(2, 1280, unet_sample_size//8,unet_sample_size//8).to(device=device, dtype=dtype),
+                False,
+            ),
+            output_path=unet_path,
+            ordered_input_names=[
+                "sample",
+                "timestep",
+                "encoder_hidden_states",
+                "down_block_0",
+                "down_block_1",
+                "down_block_2",
+                "down_block_3",
+                "down_block_4",
+                "down_block_5",
+                "down_block_6",
+                "down_block_7",
+                "down_block_8",
+                "down_block_9",
+                "down_block_10",
+                "down_block_11",
+                "mid_block_additional_residual",
+                "return_dict"
+            ],
+            output_names=["out_sample"],  # has to be different from "sample" for correct tracing
+            dynamic_axes={
+                "sample": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+                "timestep": {0: "batch"},
+                "encoder_hidden_states": {0: "batch", 1: "sequence"},
+                "down_block_0": {0: "batch", 2: "height", 3: "width"},
+                "down_block_1": {0: "batch", 2: "height", 3: "width"},
+                "down_block_2": {0: "batch", 2: "height", 3: "width"},
+                "down_block_3": {0: "batch", 2: "height2", 3: "width2"},
+                "down_block_4": {0: "batch", 2: "height2", 3: "width2"},
+                "down_block_5": {0: "batch", 2: "height2", 3: "width2"},
+                "down_block_6": {0: "batch", 2: "height4", 3: "width4"},
+                "down_block_7": {0: "batch", 2: "height4", 3: "width4"},
+                "down_block_8": {0: "batch", 2: "height4", 3: "width4"},
+                "down_block_9": {0: "batch", 2: "height8", 3: "width8"},
+                "down_block_10": {0: "batch", 2: "height8", 3: "width8"},
+                "down_block_11": {0: "batch", 2: "height8", 3: "width8"},
+                "mid_block_additional_residual": {0: "batch", 2: "height8", 3: "width8"},
+            },
+            opset=opset,
+        )
+
+        controlnet = ControlNetModel.from_pretrained(args.controlnet_path)
+        cnet_path = output_path / "controlnet" / "model.onnx"
+        onnx_export(
+            controlnet,
+            model_args=(
+                torch.randn(2, 4, 64, 64).to(device=device, dtype=dtype),
+                torch.randn(2).to(device=device, dtype=dtype),
+                torch.randn(2, 77, 768).to(device=device, dtype=dtype),
+                torch.randn(2, 3, 512,512).to(device=device, dtype=dtype),
+                False,
+            ),
+            output_path=cnet_path,
+            ordered_input_names=["sample", "timestep", "encoder_hidden_states", "controlnet_cond","return_dict"],
+            output_names=["down_block_res_samples", "mid_block_res_sample"],  # has to be different from "sample" for correct tracing
+            dynamic_axes={
+                "sample": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+                "timestep": {0: "batch"},
+                "encoder_hidden_states": {0: "batch", 1: "sequence"},
+                "controlnet_cond": {0: "batch", 2: "height", 3: "width"}
+            },
+            opset=opset,
+        )
+
+        if fp16:
+            cnet_path_model_path = str(cnet_path.absolute().as_posix())
+            convert_to_fp16(cnet_path_model_path)
+
+    else:
+        onnx_export(
+            pipeline.unet,
+            model_args=(
+                torch.randn(2, unet_in_channels, unet_sample_size,
+                    unet_sample_size).to(device=device, dtype=dtype),
+                torch.randn(2).to(device=device, dtype=dtype),
+                torch.randn(2, num_tokens, text_hidden_size).to(device=device, dtype=dtype),
+                False,
+            ),
+            output_path=unet_path,
+            ordered_input_names=["sample", "timestep", "encoder_hidden_states", "return_dict"],
+            output_names=["out_sample"],  # has to be different from "sample" for correct tracing
+            dynamic_axes={
+                "sample": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+                "timestep": {0: "batch"},
+                "encoder_hidden_states": {0: "batch", 1: "sequence"},
+            },
+            opset=opset,
+        )
     del pipeline.unet
 
     unet_model_path = str(unet_path.absolute().as_posix())
@@ -270,6 +415,15 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
     )
 
     onnx_pipeline.save_pretrained(output_path)
+
+    if controlnet_path:
+        confname=f"{output_path}/model_index.json"
+        with open(confname, 'r', encoding="utf-8") as f:
+            modelconf = json.load(f)
+            modelconf['controlnet'] = ("diffusers","OnnxRuntimeModel")
+        with open(confname, 'w', encoding="utf-8") as f:
+            json.dump(modelconf, f, indent=1)
+
     print("ONNX pipeline saved to", output_path)
 
     del pipeline
@@ -305,7 +459,16 @@ if __name__ == "__main__":
         type=str,
         help=(
             "Path to alternate VAE `diffusers` checkpoint to import and convert (either local or on the Hub). "
-            "Works only when converting from diffusers format."
+        )
+    )
+
+    parser.add_argument(
+        "--controlnet_path",
+        default="",
+        type=str,
+        help=(
+            "Path to controlnet model to import and convert (either local or on the Hub). "
+            "Setting this results in an SD model intended to be used with a specific ControlNet"
         )
     )
 
@@ -455,5 +618,5 @@ if __name__ == "__main__":
     if args.diffusers_output:
         pl.save_pretrained(args.diffusers_output)
 
-    convert_models(pl, args.output_path, args.opset, args.fp16, args.notune or blocktune)
+    convert_models(pl, args.output_path, args.opset, args.fp16, args.notune or blocktune, args.controlnet_path)
     

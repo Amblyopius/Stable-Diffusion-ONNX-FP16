@@ -11,3 +11,4 @@ omegaconf
 onnx
 onnxconverter-common
 onnxruntime-directml
+opencv-python
