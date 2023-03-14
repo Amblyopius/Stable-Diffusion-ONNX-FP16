@@ -166,7 +166,7 @@ def convert_to_fp16(
     onnx.save(fp16_model, model_path)
 
 @torch.no_grad()
-def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: int, fp16: bool, notune: bool, controlnet_path: str):
+def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: int, fp16: bool, notune: bool, controlnet_path: str, attention_slicing: str):
     '''Converts the individual models in a path (UNET, VAE ...) to ONNX'''
 
     output_path = Path(output_path)
@@ -197,7 +197,6 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
     if fp16:
         textenc_model_path = str(textenc_path.absolute().as_posix())
         convert_to_fp16(textenc_model_path)
-    del pipeline.text_encoder
 
     # UNET
     unet_in_channels = pipeline.unet.config.in_channels
@@ -208,6 +207,9 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
         with tempfile.TemporaryDirectory() as tmpdirname:
             pl.unet.save_pretrained(tmpdirname)
             controlnet_unet=UNet2DConditionModel_Cnet.from_pretrained(tmpdirname)
+
+        if attention_slicing:
+            pl.enable_attention_slicing(attention_slicing)
 
         onnx_export(
             controlnet_unet,
@@ -274,6 +276,8 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
         )
 
         controlnet = ControlNetModel.from_pretrained(args.controlnet_path)
+        if attention_slicing:
+            controlnet.set_attention_slice(attention_slicing)
         cnet_path = output_path / "controlnet" / "model.onnx"
         onnx_export(
             controlnet,
@@ -618,5 +622,5 @@ if __name__ == "__main__":
     if args.diffusers_output:
         pl.save_pretrained(args.diffusers_output)
 
-    convert_models(pl, args.output_path, args.opset, args.fp16, args.notune or blocktune, args.controlnet_path)
+    convert_models(pl, args.output_path, args.opset, args.fp16, args.notune or blocktune, args.controlnet_path, args.attention_slicing)
     
