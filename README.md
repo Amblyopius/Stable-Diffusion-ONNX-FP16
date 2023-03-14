@@ -142,6 +142,23 @@ The new image is entirely different but the shape is very similar to the origina
 
 You can look at the test-controlnet-canny.py to see how it works.
 
+Next we'll use openpose. Note that the example is a demanding pose that you would ordinarily probably not go for.
+Without tweaking this also suffers a bit from bad hands/feet. For the sake of the test I decided to tolerate it.
+Let's make a ControlNet OpenPose model:
+```
+python conv_sd_to_onnx.py --model_path "Linaqruf/anything-v3.0" --output_path "./model/anyv3-fp16-autoslicing-cn_openpose" --controlnet_path "lllyasviel/sd-controlnet-openpose" --fp16 --attention-slicing auto
+```
+And now let's run the test:
+```
+python test-controlnet-openpose.py
+```
+This gives you controlnet-openpose-test.png
+
+As some may wonder where I got the openpose startpoint image from. I used https://zhuyu1997.github.io/open-pose-editor/  
+Create the pose.
+Press the button underneath height, then download the generated map on the left.
+You can further edit it locally to fit the canvas in the way you want it to.
+
 ### Support for Instruct pix2pix
 Recently a special Stable Diffusion model was released, allowing you to have AI edit images based on instructions.
 Make sure you read the original documentation here: https://www.timothybrooks.com/instruct-pix2pix
