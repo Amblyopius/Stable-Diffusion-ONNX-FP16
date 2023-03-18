@@ -52,6 +52,7 @@ from diffusers import (
     ControlNetModel,
     UNet2DConditionModel
 )
+from diffusers.models.cross_attention import CrossAttnProcessor
 from diffusers.models.unet_2d_condition import UNet2DConditionOutput
 from diffusers.pipelines.stable_diffusion.convert_from_ckpt import load_pipeline_from_original_stable_diffusion_ckpt
 
@@ -207,6 +208,8 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
         with tempfile.TemporaryDirectory() as tmpdirname:
             pl.unet.save_pretrained(tmpdirname)
             controlnet_unet=UNet2DConditionModel_Cnet.from_pretrained(tmpdirname)
+
+        controlnet_unet.set_attn_processor(CrossAttnProcessor())
 
         if attention_slicing:
             pl.enable_attention_slicing(attention_slicing)
@@ -611,6 +614,8 @@ if __name__ == "__main__":
                 json.dump(clipconf, f, indent=1)
             pl = StableDiffusionPipeline.from_pretrained(tmpdirname,
                 torch_dtype=dtype).to(device)
+
+    pl.unet.set_attn_processor(CrossAttnProcessor())
 
     blocktune=False
     if args.attention_slicing:
