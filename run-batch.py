@@ -31,6 +31,7 @@ from PIL import Image, PngImagePlugin
 
 # The pipelines
 from diffusers import OnnxStableDiffusionPipeline, OnnxStableDiffusionImg2ImgPipeline
+from pipeline_onnx_stable_diffusion_controlnet import OnnxStableDiffusionControlNetPipeline
 # Model needed to load Text Encoder on CPU
 from diffusers import OnnxRuntimeModel
 # The schedulers
@@ -44,11 +45,12 @@ from diffusers import (
     HeunDiscreteScheduler,
     KDPM2DiscreteScheduler,
     LMSDiscreteScheduler,
-    PNDMScheduler
+    PNDMScheduler,
+    UniPCMultistepScheduler
 )
 
 # Support special text encoders
-import lpw_pipe
+import OnnxDiffusersUI.lpw_pipe
 
 # Default settings
 defSettings = {
@@ -120,8 +122,8 @@ for proj in projects:
             # We need a model
             model="model/"+runSettings['model']
             prereqmet=prereqmet and os.path.isfile(model+"/unet/model.onnx")
-            # We need a start image to do img2img
-            if runSettings['task']=="img2img":
+            # We need a start image to do img2img or controlnet
+            if runSettings['task']=="img2img" or runSettings['task']=="controlnet":
                 infile=proj+"/input.png"
                 prereqmet = prereqmet and os.path.isfile(infile)
             if prereqmet:
@@ -135,7 +137,8 @@ for proj in projects:
                     "heun": HeunDiscreteScheduler.from_pretrained(model, subfolder="scheduler"),
                     "kdpm2": KDPM2DiscreteScheduler.from_pretrained(model, subfolder="scheduler"),
                     "lms": LMSDiscreteScheduler.from_pretrained(model, subfolder="scheduler"),
-                    "pndm": PNDMScheduler.from_pretrained(model, subfolder="scheduler")
+                    "pndm": PNDMScheduler.from_pretrained(model, subfolder="scheduler"),
+                    "unipc": UniPCMultistepScheduler.from_pretrained(model, subfolder="scheduler")
                 }
                 if runSettings['task']=="img2img":
                     init_image = Image.open(infile).convert("RGB")
@@ -159,6 +162,28 @@ for proj in projects:
                             safety_checker=None,
                             feature_extractor=None
                         )
+                elif runSettings['task']=="controlnet": 
+                    init_image = Image.open(infile).convert("RGB")
+                    if args.cpu_textenc:
+                        cputextenc=OnnxRuntimeModel.from_pretrained(model+"/text_encoder")
+                        pipe = OnnxStableDiffusionControlNetPipeline.from_pretrained(
+                            model,
+                            provider="DmlExecutionProvider",
+                            revision="onnx",
+                            scheduler=sched['pndm'],
+                            text_encoder=cputextenc,
+                            safety_checker=None,
+                            feature_extractor=None
+                        )
+                    else:
+                        pipe = OnnxStableDiffusionControlNetPipeline.from_pretrained(
+                            model,
+                            provider="DmlExecutionProvider",
+                            revision="onnx",
+                            scheduler=sched['pndm'],
+                            safety_checker=None,
+                            feature_extractor=None
+                        )                 
                 else:
                     if args.cpu_textenc:
                         cputextenc=OnnxRuntimeModel.from_pretrained(model+"/text_encoder")
@@ -241,6 +266,12 @@ for proj in projects:
                                                     f"-steps-{steps}-{scheduler}-scale-"+str(scale).replace(".","_")+
                                                     "-strength-"+str(strength).replace(".","_")+".png"
                                                 )
+                                            elif runSettings['task']=="controlnet":
+                                                filename=(
+                                                    f"{proj}/result-p{promptnum}-seed{seed}-{res[0]}x{res[1]}-"+
+                                                    f"-steps-{steps}-{scheduler}-scale-"+str(scale).replace(".","_")+
+                                                    "-strength-"+str(strength).replace(".","_")+".png"      
+                                                )
                                             else:
                                                 filename=(
                                                     f"{proj}/result-p{promptnum}-seed{seed}-{res[0]}x{res[1]}-"+
@@ -252,6 +283,15 @@ for proj in projects:
                                                     image = pipe(
                                                         image=init_image,
                                                         strength=strength,
+                                                        prompt=prompt,
+                                                        negative_prompt=runSettings['negative_prompt'],
+                                                        num_inference_steps=steps,
+                                                        guidance_scale=scale,
+                                                        generator=generator).images[0]
+                                                elif runSettings['task']=="controlnet":
+                                                    image = pipe(
+                                                        image=init_image,
+                                                        controlnet_conditioning_scale=strength,
                                                         prompt=prompt,
                                                         negative_prompt=runSettings['negative_prompt'],
                                                         num_inference_steps=steps,
