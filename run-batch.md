@@ -14,22 +14,22 @@ It'll read settings.json, create a batch of images and save them in the director
 In settings.json you can define the following things:
 - The model, set with the key 'model'. It will look for a directory with that name in the model subdirectory (just like OnnxDiffusersUI).
 - The scheduler, set with the key 'scheduler'. You can also set a list of schedulers to iterate over with the key 'schedulerlist'.
-It currently accepts following values: ddim, deis, dpms_ms, dpms_ss, euler_anc, euler, heun, kdpm2, lms, pndm.
+It currently accepts following values: ddim, deis, dpms_ms, dpms_ss, euler_anc, euler, heun, kdpm2, lms, pndm,unipc.
 If the value is not recognised, it'll switch to pndm. Not all schedulers have been extensively tested and may behave unexpectendly.
 - Guidance scale, set with the key 'scale'. You can also set a list of guidance scales to iterate over with the key 'scalelist'
 - Iteration steps, set with the key 'steps'. You can also set a list of steps to iterate over with the key 'stepslist'
 - Width and height, with the keys 'width' and 'height'. You can also set a list of resolutions to iterate over with the key 'reslist' (e.g. 'reslist': ["512x512","512x768"])
 - The seed, set with the key 'seed'. If you want to iterate over seeds you can define the end with the key 'seedend'.
 Alternatively, you can provide a list of seeds using the key 'seedlist'.
-- The task to perform, set with the key 'task', default is 'txt2img'. Only txt2img has been test enough, but it also supports img2img (more on that below).
+- The task to perform, set with the key 'task', default is 'txt2img'. Only txt2img has been tested enough, but it also supports img2img and controlnet (more on that below).
 - The prompt, set with the key 'prompt'. If you want to iterate over prompts, you can define them with the key 'promptlist'.
 - A negative prompt, set with the key 'negative_prompt'. Note that the same negative prompt will apply to all prompts you provided.
 - How to parse the prompt, set with the key 'textenc'. Supports 2 values, 'standard' and 'lwp'. Use 'lwp' when you want to use weights and long prompts.
 
-If you are doing img2img there's more options:
+If you are doing img2img or controlnet there's more options:
 - Strength, set with the key 'strength'. Expected to be between 0 to 1. You can iterate over a list by setting 'strengthlist'.
 
-For img2img the directory will also need to contain an image file called input.png
+For img2img or controlnet the directory will also need to contain an image file called input.png. For img2img this acts as source image, for controlnet it is the input for the Controlnet.
 
 ## Example
 
