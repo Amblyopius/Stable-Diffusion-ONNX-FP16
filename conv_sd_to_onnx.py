@@ -167,7 +167,13 @@ def convert_to_fp16(
     onnx.save(fp16_model, model_path)
 
 @torch.no_grad()
-def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: int, fp16: bool, notune: bool, controlnet_path: str, attention_slicing: str):
+def convert_models(pipeline: StableDiffusionPipeline,
+                                        output_path: str,
+                                        opset: int,
+                                        fp16: bool,
+                                        notune: bool,
+                                        controlnet_path: str,
+                                        attention_slicing: str):
     '''Converts the individual models in a path (UNET, VAE ...) to ONNX'''
 
     output_path = Path(output_path)
@@ -207,12 +213,14 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
         # reload UNET to get an ONNX exportable version with ControlNet support
         with tempfile.TemporaryDirectory() as tmpdirname:
             pl.unet.save_pretrained(tmpdirname)
-            controlnet_unet=UNet2DConditionModel_Cnet.from_pretrained(tmpdirname)
+            controlnet_unet=UNet2DConditionModel_Cnet.from_pretrained(tmpdirname,
+                low_cpu_mem_usage=False)
 
         controlnet_unet.set_attn_processor(CrossAttnProcessor())
 
         if attention_slicing:
             pl.enable_attention_slicing(attention_slicing)
+            controlnet_unet.set_attention_slice(attention_slicing)
 
         onnx_export(
             controlnet_unet,
@@ -278,7 +286,7 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
             opset=opset,
         )
 
-        controlnet = ControlNetModel.from_pretrained(args.controlnet_path)
+        controlnet = ControlNetModel.from_pretrained(args.controlnet_path, low_cpu_mem_usage=False)
         if attention_slicing:
             controlnet.set_attention_slice(attention_slicing)
         cnet_path = output_path / "controlnet" / "model.onnx"
@@ -293,7 +301,7 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
             ),
             output_path=cnet_path,
             ordered_input_names=["sample", "timestep", "encoder_hidden_states", "controlnet_cond","return_dict"],
-            output_names=["down_block_res_samples", "mid_block_res_sample"],  # has to be different from "sample" for correct tracing
+            output_names=["down_block_res_samples", "mid_block_res_sample"],
             dynamic_axes={
                 "sample": {0: "batch", 1: "channels", 2: "height", 3: "width"},
                 "timestep": {0: "batch"},
@@ -410,11 +418,14 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
     feature_extractor = None
 
     onnx_pipeline = OnnxStableDiffusionPipeline(
-        vae_encoder=OnnxRuntimeModel.from_pretrained(output_path / "vae_encoder"),
-        vae_decoder=OnnxRuntimeModel.from_pretrained(output_path / "vae_decoder"),
-        text_encoder=OnnxRuntimeModel.from_pretrained(output_path / "text_encoder"),
+        vae_encoder=OnnxRuntimeModel.from_pretrained(output_path / "vae_encoder",
+            low_cpu_mem_usage=False),
+        vae_decoder=OnnxRuntimeModel.from_pretrained(output_path / "vae_decoder",
+            low_cpu_mem_usage=False),
+        text_encoder=OnnxRuntimeModel.from_pretrained(output_path / "text_encoder",
+            low_cpu_mem_usage=False),
         tokenizer=pipeline.tokenizer,
-        unet=OnnxRuntimeModel.from_pretrained(output_path / "unet"),
+        unet=OnnxRuntimeModel.from_pretrained(output_path / "unet",low_cpu_mem_usage=False),
         scheduler=pipeline.scheduler,
         safety_checker=safety_checker,
         feature_extractor=feature_extractor,
@@ -436,7 +447,8 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
     del pipeline
     del onnx_pipeline
     _ = OnnxStableDiffusionPipeline.from_pretrained(output_path,
-        provider="DmlExecutionProvider")
+        provider="DmlExecutionProvider",
+        low_cpu_mem_usage=False)
     print("ONNX pipeline is loadable")
 
 
@@ -448,7 +460,7 @@ if __name__ == "__main__":
         type=str,
         required=True,
         help=(
-            "Path to the `diffusers` checkpoint to convert (either a local directory or on the Hub). "
+            "Path to the `diffusers` checkpoint to convert (either local directory or on the Hub). "
             "Or the path to a local checkpoint saved in .ckpt or .safetensors."
         )
     )
@@ -465,7 +477,7 @@ if __name__ == "__main__":
         default="",
         type=str,
         help=(
-            "Path to alternate VAE `diffusers` checkpoint to import and convert (either local or on the Hub). "
+            "Path to alternate VAE `diffusers` checkpoint (either local or on the Hub). "
         )
     )
 
@@ -539,7 +551,10 @@ if __name__ == "__main__":
         "--ckpt-prediction_type",
         default=None,
         type=str,
-        help="Prediction type the model was trained on. 'epsilon' for SD v1.X and SD v2 Base, 'v-prediction' for SD v2"
+        help=(
+            "Prediction type the model was trained on. "
+           "'epsilon' for SD v1.X and SD v2 Base, 'v-prediction' for SD v2"
+       )
     )
 
     parser.add_argument(
@@ -553,9 +568,10 @@ if __name__ == "__main__":
         "--ckpt-extract-ema",
         action="store_true",
         help=(
-            "Only relevant for checkpoints that have both EMA and non-EMA weights. Whether to extract the EMA weights"
-            " or not. Defaults to `False`. Add `--extract_ema` to extract the EMA weights. EMA weights usually yield"
-            " higher quality images for inference. Non-EMA weights are usually better to continue fine-tuning."
+            "Only relevant for checkpoints that have both EMA and non-EMA weights. "
+            "If set enables extraction of EMA weights (Default is non-EMA). "
+            "EMA weights usually yield higher quality images for inference. "
+            "Non-EMA weights are usually better to continue fine-tuning."
         )
     )
 
@@ -563,13 +579,19 @@ if __name__ == "__main__":
         "--ckpt-num-in-channels",
         default=None,
         type=int,
-        help="The number of input channels. If `None` number of input channels will be automatically inferred.",
+        help=(
+            "The number of input channels. "
+            "If `None` number of input channels will be automatically inferred."
+        )
     )
 
     parser.add_argument(
         "--ckpt-upcast-attention",
         action="store_true",
-        help="Whether the attention computation should always be upcasted. Necessary when running SD 2.1"
+        help=(
+            "Whether the attention computation should always be upcasted. "
+            "Necessary when running SD 2.1"
+        )
     )
 
     args = parser.parse_args()
@@ -591,17 +613,18 @@ if __name__ == "__main__":
         )
     else:
         pl = StableDiffusionPipeline.from_pretrained(args.model_path,
-            torch_dtype=dtype).to(device)
+            torch_dtype=dtype,low_cpu_mem_usage=False).to(device)
 
     if args.vae_path:
         with tempfile.TemporaryDirectory() as tmpdirname:
             pl.save_pretrained(tmpdirname)
             if args.vae_path.endswith('/vae'):
-                vae = AutoencoderKL.from_pretrained(args.vae_path[:-4],subfolder='vae')
+                vae = AutoencoderKL.from_pretrained(args.vae_path[:-4],subfolder='vae',
+                    low_cpu_mem_usage=False)
             else:
-                vae = AutoencoderKL.from_pretrained(args.vae_path)
+                vae = AutoencoderKL.from_pretrained(args.vae_path,low_cpu_mem_usage=False)
             pl = StableDiffusionPipeline.from_pretrained(tmpdirname,
-                torch_dtype=dtype, vae=vae).to(device)
+                torch_dtype=dtype, vae=vae,low_cpu_mem_usage=False).to(device)
 
     if args.clip_skip:
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -613,7 +636,7 @@ if __name__ == "__main__":
             with open(confname, 'w', encoding="utf-8") as f:
                 json.dump(clipconf, f, indent=1)
             pl = StableDiffusionPipeline.from_pretrained(tmpdirname,
-                torch_dtype=dtype).to(device)
+                torch_dtype=dtype,low_cpu_mem_usage=False).to(device)
 
     pl.unet.set_attn_processor(CrossAttnProcessor())
 
@@ -627,5 +650,10 @@ if __name__ == "__main__":
     if args.diffusers_output:
         pl.save_pretrained(args.diffusers_output)
 
-    convert_models(pl, args.output_path, args.opset, args.fp16, args.notune or blocktune, args.controlnet_path, args.attention_slicing)
+    convert_models(pl, args.output_path,
+                                    args.opset,
+                                    args.fp16,
+                                    args.notune or blocktune,
+                                    args.controlnet_path,
+                                    args.attention_slicing)
     
