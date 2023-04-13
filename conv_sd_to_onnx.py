@@ -28,6 +28,7 @@
 # v4.0 Support ckpt conversion (--> renamed to conv_sd_to_onnx.py)
 # v5.0 Use ONNX Runtime Transformers for model optimisation
 # v6.0 Support ControlNet
+# v6.1 Support for diffusers 0.15.0
 
 import warnings
 import argparse
@@ -52,9 +53,9 @@ from diffusers import (
     ControlNetModel,
     UNet2DConditionModel
 )
-from diffusers.models.cross_attention import CrossAttnProcessor
+from diffusers.models.attention_processor import AttnProcessor
 from diffusers.models.unet_2d_condition import UNet2DConditionOutput
-from diffusers.pipelines.stable_diffusion.convert_from_ckpt import load_pipeline_from_original_stable_diffusion_ckpt
+from diffusers.pipelines.stable_diffusion.convert_from_ckpt import download_from_original_stable_diffusion_ckpt
 
 # To improve future development and testing, warnings should be limited to what is somewhat useful
 # Truncation warnings are expected as part of FP16 conversion and should not be shown
@@ -216,7 +217,7 @@ def convert_models(pipeline: StableDiffusionPipeline,
             controlnet_unet=UNet2DConditionModel_Cnet.from_pretrained(tmpdirname,
                 low_cpu_mem_usage=False)
 
-        controlnet_unet.set_attn_processor(CrossAttnProcessor())
+        controlnet_unet.set_attn_processor(AttnProcessor())
 
         if attention_slicing:
             pl.enable_attention_slicing(attention_slicing)
@@ -599,7 +600,7 @@ if __name__ == "__main__":
     dtype=torch.float32
     device = "cpu"
     if args.model_path.endswith(".ckpt") or args.model_path.endswith(".safetensors"):
-        pl = load_pipeline_from_original_stable_diffusion_ckpt(
+        pl = download_from_original_stable_diffusion_ckpt(
             checkpoint_path=args.model_path,
             original_config_file=args.ckpt_original_config_file,
             image_size=args.ckpt_image_size,
@@ -638,7 +639,7 @@ if __name__ == "__main__":
             pl = StableDiffusionPipeline.from_pretrained(tmpdirname,
                 torch_dtype=dtype,low_cpu_mem_usage=False).to(device)
 
-    pl.unet.set_attn_processor(CrossAttnProcessor())
+    pl.unet.set_attn_processor(AttnProcessor())
 
     blocktune=False
     if args.attention_slicing:
