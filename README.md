@@ -40,6 +40,7 @@ pip install virtualenv
 python -m venv sd_env
 sd_env\scripts\activate
 python -m pip install --upgrade pip
+pip install torch --extra-index-url https://download.pytorch.org/whl/nightly/cpu --pre
 pip install -r requirements.txt
 ```
 

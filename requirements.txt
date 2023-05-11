@@ -1,7 +1,6 @@
 numpy
 transformers
 diffusers
-torch
 ftfy
 spacy
 scipy
