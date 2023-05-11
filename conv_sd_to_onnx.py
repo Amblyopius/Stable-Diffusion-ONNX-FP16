@@ -29,6 +29,7 @@
 # v5.0 Use ONNX Runtime Transformers for model optimisation
 # v6.0 Support ControlNet
 # v6.1 Support for diffusers 0.15.0
+# v7.0 Support for diffusers 0.16.0 and torch 2.1
 
 import warnings
 import argparse
@@ -53,7 +54,6 @@ from diffusers import (
     ControlNetModel,
     UNet2DConditionModel
 )
-from diffusers.models.attention_processor import AttnProcessor
 from diffusers.models.unet_2d_condition import UNet2DConditionOutput
 from diffusers.pipelines.stable_diffusion.convert_from_ckpt import download_from_original_stable_diffusion_ckpt
 
@@ -216,8 +216,6 @@ def convert_models(pipeline: StableDiffusionPipeline,
             pl.unet.save_pretrained(tmpdirname)
             controlnet_unet=UNet2DConditionModel_Cnet.from_pretrained(tmpdirname,
                 low_cpu_mem_usage=False)
-
-        controlnet_unet.set_attn_processor(AttnProcessor())
 
         if attention_slicing:
             pl.enable_attention_slicing(attention_slicing)
@@ -638,8 +636,6 @@ if __name__ == "__main__":
                 json.dump(clipconf, f, indent=1)
             pl = StableDiffusionPipeline.from_pretrained(tmpdirname,
                 torch_dtype=dtype,low_cpu_mem_usage=False).to(device)
-
-    pl.unet.set_attn_processor(AttnProcessor())
 
     blocktune=False
     if args.attention_slicing:
