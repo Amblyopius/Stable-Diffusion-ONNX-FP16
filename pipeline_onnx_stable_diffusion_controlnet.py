@@ -385,6 +385,7 @@ class OnnxStableDiffusionControlNetPipeline(DiffusionPipeline):
                     timestep=timestep,
                     encoder_hidden_states=prompt_embeds,
                     controlnet_cond=image,
+                    conditioning_scale=1.0
                 )
 
                 mid_block_res_sample=blocksamples[12]
