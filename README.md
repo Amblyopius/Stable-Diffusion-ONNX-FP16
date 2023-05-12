@@ -5,6 +5,7 @@ This was mainly intended for use with AMD GPUs but should work just as well with
 I'd be very interested to hear of any results with Intel Arc.  
 
 **MOST IMPORTANT RECENT UPDATES:**  
+**- Realigned with latest version of diffusers, we were forced to switch to torch 2.1 nightly! (Install instructions updated accordingly)**  
 **- Added an ONNX ControlNet pipeline (documented in additional section after standard install)**  
 **- Added an ONNX Instruct pix2pix pipeline (documented in additional section after standard install)**  
 **- Added support for Clip Skip**  
