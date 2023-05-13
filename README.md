@@ -101,7 +101,7 @@ python test-txt2img.py --model "model\sd2_1-fp16-autoslicing" --size 768 --seed 
 Now that we've got everything working and we can create pictures, let's get a GUI. We'll use ONNXDiffusersUI but make it so it doesn't break our workflow.  
 First we clone the repository:
 ```
-git clone https://github.com/azuritecoin/OnnxDiffusersUI
+git clone https://github.com/Amblyopius/OnnxDiffusersUI
 ```
 Now we run the UI
 ```
@@ -113,7 +113,8 @@ If you're done you can go back to the CMD window and press Ctrl+C and it will qu
 Note that it expects your models to be in the model directory (which is why we put them there in the instructions).  
 You can find your history and all the pictures you created in the directory called output.
 
-If you want to learn more about the UI be sure to visit https://github.com/azuritecoin/OnnxDiffusersUI
+If you want to learn more about the UI be sure to visit https://github.com/azuritecoin/OnnxDiffusersUI  
+NOTE: We are using a fork as it simplifies keeping it aligned with our own updates
 
 ## Advanced features
 ### Support for ControlNet
