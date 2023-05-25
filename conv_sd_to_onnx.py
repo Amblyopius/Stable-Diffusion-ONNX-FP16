@@ -30,6 +30,7 @@
 # v6.0 Support ControlNet
 # v6.1 Support for diffusers 0.15.0
 # v7.0 Support for diffusers 0.16.0 and torch 2.1
+# v8.0 Support for ONNX Runtime 1.15
 
 import warnings
 import argparse
@@ -64,30 +65,8 @@ warnings.filterwarnings('ignore','.*will be truncated.*')
 warnings.filterwarnings('ignore','.*The shape inference of prim::Constant type is missing.*')
 
 # ONNX Runtime Transformers offers ONNX model optimisation
-# It does not directly support DirectML but we can use a custom class
-# Based on onnx_model_unet.py in ONNX Runtime Transformers
-from onnx import ModelProto
-from onnxruntime.transformers.onnx_model_unet import UnetOnnxModel
-
-class UnetOnnxModelDML(UnetOnnxModel):
-    def __init__(self, model: ModelProto, num_heads: int = 0, hidden_size: int = 0):
-        """Initialize UNet ONNX Model.
-
-        Args:
-            model (ModelProto): the ONNX model
-            num_heads (int, optional): number of attention heads. Defaults to 0 (detect the parameter automatically).
-            hidden_size (int, optional): hidden dimension. Defaults to 0 (detect the parameter automatically).
-        """
-        assert (num_heads == 0 and hidden_size == 0) or (num_heads > 0 and hidden_size % num_heads == 0)
-
-        super().__init__(model, num_heads=num_heads, hidden_size=hidden_size)
-
-    def optimize(self, enable_shape_inference=False):
-        if not enable_shape_inference:
-            self.disable_shape_inference()
-        self.fuse_layer_norm()
-        self.preprocess()
-        self.postprocess()
+from onnxruntime.transformers.optimizer import optimize_model
+from onnxruntime.transformers.fusion_options import FusionOptions
 
 # We need a wrapper for UNet2DConditionModel as we need to pass tuples
 # We can't properly export tuples of Tensors with ONNX
@@ -337,19 +316,40 @@ def convert_models(pipeline: StableDiffusionPipeline,
 
     unet_model_path = str(unet_path.absolute().as_posix())
     unet_dir = os.path.dirname(unet_model_path)
-    unet = onnx.load(unet_model_path)
+
+    # optimizer = UnetOnnxModelDML(unet, 0, 0)
+    if not notune:
+        #optimizer.optimize()
+        #optimizer.topological_sort()
+        optimization_options = FusionOptions("unet")
+        optimization_options.enable_skip_layer_norm= False
+        optimization_options.enable_bias_skip_layer_norm = False
+        optimization_options.enable_qordered_matmul = False
+        optimization_options.enable_nhwc_conv = False
+        optimization_options.enable_bias_splitgelu = False
+        optimization_options.enable_bias_add = False
+        optimization_options.enable_shape_inference = False
+        optimization_options.enable_group_norm = False
+        optimization_options.enable_gelu = False
+        optimizer = optimize_model(
+            input = unet_model_path,
+            model_type = "unet",
+            opt_level = 0,
+            optimization_options = optimization_options,
+            use_gpu = False,
+            only_onnxruntime = False
+        )
+        unet=optimizer.model
+        del optimizer
+    else:
+        unet=onnx.load(unet_model_path)
+        
     # clean up existing tensor files
     shutil.rmtree(unet_dir)
     os.mkdir(unet_dir)
-
-    optimizer = UnetOnnxModelDML(unet, 0, 0)
-    if not notune:
-        optimizer.optimize()
-        optimizer.topological_sort()
-
     # collate external tensor files into one
     onnx.save_model(
-        optimizer.model,
+        unet,
         unet_model_path,
         save_as_external_data=True,
         all_tensors_to_one_file=True,
@@ -358,7 +358,7 @@ def convert_models(pipeline: StableDiffusionPipeline,
     )
     if fp16:
         convert_to_fp16(unet_model_path)
-    del unet, optimizer
+    del unet
 
     # VAE ENCODER
     vae_encoder = pipeline.vae
@@ -491,7 +491,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--opset",
-        default=15,
+        default=17,
         type=int,
         help="The version of the ONNX operator set to use.",
     )
