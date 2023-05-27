@@ -18,8 +18,8 @@ We'll demonstrate this by downloading and setting up ONNXDiffusersUI specificall
 
 ## Set up
 
-First make sure you have Python 3.10 installed. You can get it here: https://www.python.org/downloads/  
-**NOTE:** Don't install 3.11 just yet cause not every prerequisite may be available if you do!
+First make sure you have Python 3.10 or 3.11 installed. You can get it here: https://www.python.org/downloads/  
+**NOTE:** Since the release of ONNX Runtime 3.11 all requirements now have proper Python 3.11 support!
 
 If you don't have git, get it here: https://gitforwindows.org/
 
