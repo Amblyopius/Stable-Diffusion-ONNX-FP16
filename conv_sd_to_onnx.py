@@ -31,6 +31,7 @@
 # v6.1 Support for diffusers 0.15.0
 # v7.0 Support for diffusers 0.16.0 and torch 2.1
 # v8.0 Support for ONNX Runtime 1.15
+# v8.1 Tuning improvements
 
 import warnings
 import argparse
@@ -177,7 +178,7 @@ def convert_models(pipeline: StableDiffusionPipeline,
         ordered_input_names=["input_ids"],
         output_names=["last_hidden_state", "pooler_output"],
         dynamic_axes={
-            "input_ids": {0: "batch", 1: "sequence"},
+            "input_ids": {0: "textenc_inputids_batch", 1: "textenc_inputids_sequence"},
         },
         opset=opset,
     )
@@ -244,22 +245,22 @@ def convert_models(pipeline: StableDiffusionPipeline,
             ],
             output_names=["out_sample"],  # has to be different from "sample" for correct tracing
             dynamic_axes={
-                "sample": {0: "batch", 1: "channels", 2: "height", 3: "width"},
-                "timestep": {0: "batch"},
-                "encoder_hidden_states": {0: "batch", 1: "sequence"},
-                "down_block_0": {0: "batch", 2: "height", 3: "width"},
-                "down_block_1": {0: "batch", 2: "height", 3: "width"},
-                "down_block_2": {0: "batch", 2: "height", 3: "width"},
-                "down_block_3": {0: "batch", 2: "height2", 3: "width2"},
-                "down_block_4": {0: "batch", 2: "height2", 3: "width2"},
-                "down_block_5": {0: "batch", 2: "height2", 3: "width2"},
-                "down_block_6": {0: "batch", 2: "height4", 3: "width4"},
-                "down_block_7": {0: "batch", 2: "height4", 3: "width4"},
-                "down_block_8": {0: "batch", 2: "height4", 3: "width4"},
-                "down_block_9": {0: "batch", 2: "height8", 3: "width8"},
-                "down_block_10": {0: "batch", 2: "height8", 3: "width8"},
-                "down_block_11": {0: "batch", 2: "height8", 3: "width8"},
-                "mid_block_additional_residual": {0: "batch", 2: "height8", 3: "width8"},
+                "sample": {0: "cnet_sample_batch", 1: "cnet_sample_channels", 2: "cnet_sample_height", 3: "cnet_sample_width"},
+                "timestep": {0: "cnet_timestep_batch"},
+                "encoder_hidden_states": {0: "cnet_ehs_batch", 1: "cnet_ehs_sequence"},
+                "down_block_0": {0: "cnet_db0_batch", 2: "cnet_db0_height", 3: "cnet_db0_width"},
+                "down_block_1": {0: "cnet_db1_batch", 2: "cnet_db1_height", 3: "cnet_db1_width"},
+                "down_block_2": {0: "cnet_db2_batch", 2: "cnet_db2_height", 3: "cnet_db2_width"},
+                "down_block_3": {0: "cnet_db3_batch", 2: "cnet_db3_height2", 3: "cnet_db3_width2"},
+                "down_block_4": {0: "cnet_db4_batch", 2: "cnet_db4_height2", 3: "cnet_db4_width2"},
+                "down_block_5": {0: "cnet_db5_batch", 2: "cnet_db5_height2", 3: "cnet_db5_width2"},
+                "down_block_6": {0: "cnet_db6_batch", 2: "cnet_db6_height4", 3: "cnet_db6_width4"},
+                "down_block_7": {0: "cnet_db7_batch", 2: "cnet_db7_height4", 3: "cnet_db7_width4"},
+                "down_block_8": {0: "cnet_db8_batch", 2: "cnet_db8_height4", 3: "cnet_db8_width4"},
+                "down_block_9": {0: "cnet_db9_batch", 2: "cnet_db9_height8", 3: "cnet_db9_width8"},
+                "down_block_10": {0: "cnet_db10_batch", 2: "cnet_db10_height8", 3: "cnet_db10_width8"},
+                "down_block_11": {0: "cnet_db11_batch", 2: "cnet_db11_height8", 3: "cnet_db11_width8"},
+                "mid_block_additional_residual": {0: "cnet_mbar_batch", 2: "cnet_mbar_height8", 3: "cnet_mbar_width8"},
             },
             opset=opset,
         )
@@ -280,10 +281,10 @@ def convert_models(pipeline: StableDiffusionPipeline,
             ordered_input_names=["sample", "timestep", "encoder_hidden_states", "controlnet_cond"],
             output_names=["down_block_res_samples", "mid_block_res_sample"],
             dynamic_axes={
-                "sample": {0: "batch", 1: "channels", 2: "height", 3: "width"},
-                "timestep": {0: "batch"},
-                "encoder_hidden_states": {0: "batch", 1: "sequence"},
-                "controlnet_cond": {0: "batch", 2: "height", 3: "width"}
+                "sample": {0: "unet_sample_batch", 1: "unet_sample_channels", 2: "unet_sample_height", 3: "unet_sample_width"},
+                "timestep": {0: "unet_timestep_batch"},
+                "encoder_hidden_states": {0: "unet_ehs_batch", 1: "unet_ehs_sequence"},
+                "controlnet_cond": {0: "unet_cnetcond_batch", 2: "unet_cnetcond_height", 3: "unet_cnetcond_width"}
             },
             opset=opset,
         )
@@ -306,9 +307,9 @@ def convert_models(pipeline: StableDiffusionPipeline,
             ordered_input_names=["sample", "timestep", "encoder_hidden_states", "return_dict"],
             output_names=["out_sample"],  # has to be different from "sample" for correct tracing
             dynamic_axes={
-                "sample": {0: "batch", 1: "channels", 2: "height", 3: "width"},
-                "timestep": {0: "batch"},
-                "encoder_hidden_states": {0: "batch", 1: "sequence"},
+                "sample": {0: "unet_sample_batch", 1: "unet_sample_channels", 2: "unet_sample_height", 3: "unet_sample_width"},
+                "timestep": {0: "unet_timestep_batch"},
+                "encoder_hidden_states": {0: "unet_ehs_batch", 1: "unet_ehs_sequence"},
             },
             opset=opset,
         )
@@ -317,20 +318,23 @@ def convert_models(pipeline: StableDiffusionPipeline,
     unet_model_path = str(unet_path.absolute().as_posix())
     unet_dir = os.path.dirname(unet_model_path)
 
-    # optimizer = UnetOnnxModelDML(unet, 0, 0)
     if not notune:
-        #optimizer.optimize()
-        #optimizer.topological_sort()
+        # First we set our optimisation to the ORT Optimizer defaults for unet
         optimization_options = FusionOptions("unet")
-        optimization_options.enable_skip_layer_norm= False
+        # The ORT optimizer is designed for ORT GPU and CUDA
+        # To make things work with ORT DirectML, we disable some options
+        # On by default in ORT optimizer, turned off because it has no effect
         optimization_options.enable_bias_skip_layer_norm = False
+        # On by default in ORT optimizer, turned off because it has no effect
         optimization_options.enable_qordered_matmul = False
+        # On by default in ORT optimizer, turned off because it breaks ORT DirectML
         optimization_options.enable_nhwc_conv = False
+        # On by default in ORT optimizer, turned off because it breaks ORT DirectML
         optimization_options.enable_bias_splitgelu = False
+        # On by default in ORT optimizer, turned off because it has no effect
         optimization_options.enable_bias_add = False
-        optimization_options.enable_shape_inference = False
+        # On by default in ORT optimizer, turned off because it breaks ORT DirectML
         optimization_options.enable_group_norm = False
-        optimization_options.enable_gelu = False
         optimizer = optimize_model(
             input = unet_model_path,
             model_type = "unet",
@@ -339,6 +343,10 @@ def convert_models(pipeline: StableDiffusionPipeline,
             use_gpu = False,
             only_onnxruntime = False
         )
+        if fp16:
+            optimizer.convert_float_to_float16(
+                keep_io_types=True, disable_shape_infer=True, op_block_list=['RandomNormalLike']
+            )
         unet=optimizer.model
         del optimizer
     else:
@@ -356,7 +364,7 @@ def convert_models(pipeline: StableDiffusionPipeline,
         location="weights.pb",
         convert_attribute=False,
     )
-    if fp16:
+    if fp16 and notune:
         convert_to_fp16(unet_model_path)
     del unet
 
@@ -378,7 +386,7 @@ def convert_models(pipeline: StableDiffusionPipeline,
         ordered_input_names=["sample", "return_dict"],
         output_names=["latent_sample"],
         dynamic_axes={
-            "sample": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+            "sample": {0: "vaeenc_sample_batch", 1: "vaeenc_sample_channels", 2: "vaeenc_sample_height", 3: "vaeenc_sample_width"},
         },
         opset=opset,
     )
@@ -400,7 +408,7 @@ def convert_models(pipeline: StableDiffusionPipeline,
         ordered_input_names=["latent_sample", "return_dict"],
         output_names=["sample"],
         dynamic_axes={
-            "latent_sample": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+            "latent_sample": {0: "vaedec_sample_batch", 1: "vaedec_sample_channels", 2: "vaedec_sample_height", 3: "vaedec_sample_width"},
         },
         opset=opset,
     )

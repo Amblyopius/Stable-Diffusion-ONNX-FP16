@@ -19,6 +19,8 @@ import argparse
 import os.path
 # Numpy is used to provide a random generator
 import numpy
+# Needed to set session options
+import onnxruntime as ort
 
 
 from diffusers import OnnxStableDiffusionPipeline, OnnxRuntimeModel
@@ -79,6 +81,12 @@ if __name__ == "__main__":
         required=False,
         help="Seed for generation, allows you to get the exact same image again",
     )
+    
+    parser.add_argument(
+        "--fixeddims",
+        action="store_true",
+        help="Pass fixed dimensions to ONNX Runtime. Test purposes only, NOT VRAM FRIENDLY!",
+    )
 
     parser.add_argument(
         "--cpu-textenc", "--cpuclip",
@@ -111,6 +119,19 @@ if __name__ == "__main__":
     if  os.path.isdir(args.model+"/unet"):
         height=args.size
         width=args.size
+        
+        sess_options = ort.SessionOptions()
+        sess_options.enable_mem_pattern = False
+
+        if args.fixeddims:
+            sess_options.add_free_dimension_override_by_name("unet_sample_batch", 2)
+            sess_options.add_free_dimension_override_by_name("unet_sample_channels", 4)
+            sess_options.add_free_dimension_override_by_name("unet_sample_height", 64)
+            sess_options.add_free_dimension_override_by_name("unet_sample_width", 64)
+            sess_options.add_free_dimension_override_by_name("unet_timestep_batch", 1)
+            sess_options.add_free_dimension_override_by_name("unet_ehs_batch", 2)
+            sess_options.add_free_dimension_override_by_name("unet_ehs_sequence", 77)
+        
         num_inference_steps=args.steps
         guidance_scale=args.scale
         prompt = args.prompt
@@ -127,7 +148,7 @@ if __name__ == "__main__":
                     provider="DmlExecutionProvider", text_encoder=cputextenc)
         else:
             pipe = OnnxStableDiffusionPipeline.from_pretrained(args.model,
-                provider="DmlExecutionProvider")
+                provider="DmlExecutionProvider", sess_options=sess_options)
         image = pipe(prompt, width, height, num_inference_steps, guidance_scale,
                             negative_prompt,generator=generator).images[0]
         image.save(imgname)
