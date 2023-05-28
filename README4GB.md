@@ -10,8 +10,7 @@ We'll focus on making all of it work within limited VRAM. This will still includ
 
 ## Set up
 
-First make sure you have Python 3.10 installed. You can get it here: https://www.python.org/downloads/  
-**NOTE:** Don't install 3.11 just yet cause not every prerequisite may be available if you do!
+First make sure you have Python 3.10 or 3.11 installed. You can get it here: https://www.python.org/downloads/  
 
 If you don't have git, get it here: https://gitforwindows.org/
 
@@ -30,6 +29,7 @@ pip install virtualenv
 python -m venv sd_env
 sd_env\scripts\activate
 python -m pip install --upgrade pip
+pip install torch --extra-index-url https://download.pytorch.org/whl/nightly/cpu --pre
 pip install -r requirements.txt
 ```
 
@@ -67,7 +67,7 @@ You should now have your first picture in the current directory.
 Now that we've got everything working and we can create pictures, let's get a GUI. We'll use ONNXDiffusersUI but make it so it doesn't break our workflow.  
 First we clone the repository:
 ```
-git clone https://github.com/azuritecoin/OnnxDiffusersUI
+git clone https://github.com/Amblyopius/OnnxDiffusersUI
 ```
 Now we run the UI
 ```
