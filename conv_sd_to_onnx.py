@@ -32,6 +32,7 @@
 # v7.0 Support for diffusers 0.16.0 and torch 2.1
 # v8.0 Support for ONNX Runtime 1.15
 # v8.1 Tuning improvements
+# v8.2 Tuning improvements + fix for loading tuned UNET
 
 import warnings
 import argparse
@@ -328,13 +329,9 @@ def convert_models(pipeline: StableDiffusionPipeline,
         # On by default in ORT optimizer, turned off because it has no effect
         optimization_options.enable_qordered_matmul = False
         # On by default in ORT optimizer, turned off because it breaks ORT DirectML
-        optimization_options.enable_nhwc_conv = False
-        # On by default in ORT optimizer, turned off because it breaks ORT DirectML
         optimization_options.enable_bias_splitgelu = False
         # On by default in ORT optimizer, turned off because it has no effect
         optimization_options.enable_bias_add = False
-        # On by default in ORT optimizer, turned off because it breaks ORT DirectML
-        optimization_options.enable_group_norm = False
         optimizer = optimize_model(
             input = unet_model_path,
             model_type = "unet",
@@ -347,6 +344,7 @@ def convert_models(pipeline: StableDiffusionPipeline,
             optimizer.convert_float_to_float16(
                 keep_io_types=True, disable_shape_infer=True, op_block_list=['RandomNormalLike']
             )
+        optimizer.topological_sort()
         unet=optimizer.model
         del optimizer
     else:
@@ -431,7 +429,8 @@ def convert_models(pipeline: StableDiffusionPipeline,
         text_encoder=OnnxRuntimeModel.from_pretrained(output_path / "text_encoder",
             low_cpu_mem_usage=False),
         tokenizer=pipeline.tokenizer,
-        unet=OnnxRuntimeModel.from_pretrained(output_path / "unet",low_cpu_mem_usage=False),
+        unet=OnnxRuntimeModel.from_pretrained(output_path / "unet",
+            low_cpu_mem_usage=False, provider="DmlExecutionProvider"),
         scheduler=pipeline.scheduler,
         safety_checker=safety_checker,
         feature_extractor=feature_extractor,
