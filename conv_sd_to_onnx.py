@@ -329,6 +329,8 @@ def convert_models(pipeline: StableDiffusionPipeline,
         # On by default in ORT optimizer, turned off because it has no effect
         optimization_options.enable_qordered_matmul = False
         # On by default in ORT optimizer, turned off because it breaks ORT DirectML
+        optimization_options.enable_nhwc_conv = False
+        # On by default in ORT optimizer, turned off because it breaks ORT DirectML
         optimization_options.enable_bias_splitgelu = False
         # On by default in ORT optimizer, turned off because it has no effect
         optimization_options.enable_bias_add = False
