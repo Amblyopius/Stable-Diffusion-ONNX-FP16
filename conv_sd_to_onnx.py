@@ -33,6 +33,7 @@
 # v8.0 Support for ONNX Runtime 1.15
 # v8.1 Tuning improvements
 # v8.2 Tuning improvements + fix for loading tuned UNET
+# v8.3 Tuning improvements
 
 import warnings
 import argparse
@@ -325,15 +326,9 @@ def convert_models(pipeline: StableDiffusionPipeline,
         # The ORT optimizer is designed for ORT GPU and CUDA
         # To make things work with ORT DirectML, we disable some options
         # On by default in ORT optimizer, turned off because it has no effect
-        optimization_options.enable_bias_skip_layer_norm = False
-        # On by default in ORT optimizer, turned off because it has no effect
         optimization_options.enable_qordered_matmul = False
-        # On by default in ORT optimizer, turned off because it breaks ORT DirectML
+        # On by default in ORT optimizer, turned off as it causes performance issues
         optimization_options.enable_nhwc_conv = False
-        # On by default in ORT optimizer, turned off because it breaks ORT DirectML
-        optimization_options.enable_bias_splitgelu = False
-        # On by default in ORT optimizer, turned off because it has no effect
-        optimization_options.enable_bias_add = False
         optimizer = optimize_model(
             input = unet_model_path,
             model_type = "unet",
