@@ -34,6 +34,7 @@
 # v8.1 Tuning improvements
 # v8.2 Tuning improvements + fix for loading tuned UNET
 # v8.3 Tuning improvements
+# v8.4 Moving back to traditional Attention Processor so it can be tuned into MultiHeadAttention
 
 import warnings
 import argparse
@@ -58,6 +59,7 @@ from diffusers import (
     ControlNetModel,
     UNet2DConditionModel
 )
+from diffusers.models.attention_processor import AttnProcessor
 from diffusers.models.unet_2d_condition import UNet2DConditionOutput
 from diffusers.pipelines.stable_diffusion.convert_from_ckpt import download_from_original_stable_diffusion_ckpt
 
@@ -639,6 +641,9 @@ if __name__ == "__main__":
                 json.dump(clipconf, f, indent=1)
             pl = StableDiffusionPipeline.from_pretrained(tmpdirname,
                 torch_dtype=dtype,low_cpu_mem_usage=False).to(device)
+
+    # Enabling legacy Attention Processor allows tuning to convert it into MultiHeadAttention for RDNA3
+    pl.unet.set_attn_processor(AttnProcessor())
 
     blocktune=False
     if args.attention_slicing:
