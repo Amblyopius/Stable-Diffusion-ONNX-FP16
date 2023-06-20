@@ -35,6 +35,7 @@
 # v8.2 Tuning improvements + fix for loading tuned UNET
 # v8.3 Tuning improvements
 # v8.4 Moving back to traditional Attention Processor so it can be tuned into MultiHeadAttention
+# v9.0 More tuning including VAE and Controlnet. Controlnet is always max sliced to reduce VRAM stress
 
 import warnings
 import argparse
@@ -50,7 +51,6 @@ from torch.onnx import export
 import safetensors
 
 import onnx
-from onnxruntime.transformers.float16 import convert_float_to_float16
 from diffusers.models import AutoencoderKL
 from diffusers import (
     OnnxRuntimeModel,
@@ -70,8 +70,9 @@ warnings.filterwarnings('ignore','.*will be truncated.*')
 warnings.filterwarnings('ignore','.*The shape inference of prim::Constant type is missing.*')
 
 # ONNX Runtime Transformers offers ONNX model optimisation
-from onnxruntime.transformers.optimizer import optimize_model
+from onnxruntime.transformers.float16 import convert_float_to_float16
 from onnxruntime.transformers.fusion_options import FusionOptions
+from onnxruntime.transformers.optimizer import optimize_model
 
 # We need a wrapper for UNet2DConditionModel as we need to pass tuples
 # We can't properly export tuples of Tensors with ONNX
@@ -132,6 +133,50 @@ def onnx_export(
         do_constant_folding=True,
         opset_version=opset,
     )
+
+@torch.no_grad()
+def tune_model(
+    model_path: str,
+    model_type: str,
+    fp16: bool
+):
+    model_dir=os.path.dirname(model_path)
+    
+    # First we set our optimisation to the ORT Optimizer defaults for the provided type
+    optimization_options = FusionOptions(model_type)
+    # The ORT optimizer is designed for ORT GPU and CUDA
+    # To make things work with ORT DirectML, we disable some options
+    # The GroupNorm op has a very negative effect on VRAM and CPU use
+    optimization_options.enable_group_norm = False
+    # On by default in ORT optimizer, turned off as it causes performance issues
+    optimization_options.enable_nhwc_conv = False
+    # On by default in ORT optimizer, turned off because it has no effect
+    optimization_options.enable_qordered_matmul = False
+    optimizer = optimize_model(
+        input = model_path,
+        model_type = model_type,
+        opt_level = 0,
+        optimization_options = optimization_options,
+        use_gpu = False,
+        only_onnxruntime = False
+    )
+    if fp16:
+        optimizer.convert_float_to_float16(
+        keep_io_types=True, disable_shape_infer=True, op_block_list=['RandomNormalLike']
+    )
+    optimizer.topological_sort()
+        
+    shutil.rmtree(model_dir)
+    os.mkdir(model_dir)
+    # collate external tensor files into one
+    onnx.save_model(
+        optimizer.model,
+        model_path,
+        save_as_external_data=True,
+        all_tensors_to_one_file=True,
+        location="weights.pb",
+        convert_attribute=False,
+    )        
 
 @torch.no_grad()
 def convert_to_fp16(
@@ -204,6 +249,8 @@ def convert_models(pipeline: StableDiffusionPipeline,
         if attention_slicing:
             pl.enable_attention_slicing(attention_slicing)
             controlnet_unet.set_attention_slice(attention_slicing)
+        else:
+            controlnet_unet.set_attn_processor(AttnProcessor())
 
         onnx_export(
             controlnet_unet,
@@ -269,9 +316,8 @@ def convert_models(pipeline: StableDiffusionPipeline,
             opset=opset,
         )
 
-        controlnet = ControlNetModel.from_pretrained(args.controlnet_path, low_cpu_mem_usage=False)
-        if attention_slicing:
-            controlnet.set_attention_slice(attention_slicing)
+        controlnet = ControlNetModel.from_pretrained(controlnet_path, low_cpu_mem_usage=False)
+        controlnet.set_attention_slice("max")
         cnet_path = output_path / "controlnet" / "model.onnx"
         onnx_export(
             controlnet,
@@ -293,9 +339,9 @@ def convert_models(pipeline: StableDiffusionPipeline,
             opset=opset,
         )
 
+        cnet_model_path = str(cnet_path.absolute().as_posix())
         if fp16:
-            cnet_path_model_path = str(cnet_path.absolute().as_posix())
-            convert_to_fp16(cnet_path_model_path)
+            convert_to_fp16(cnet_model_path)
 
     else:
         onnx_export(
@@ -320,50 +366,10 @@ def convert_models(pipeline: StableDiffusionPipeline,
     del pipeline.unet
 
     unet_model_path = str(unet_path.absolute().as_posix())
-    unet_dir = os.path.dirname(unet_model_path)
-
     if not notune:
-        # First we set our optimisation to the ORT Optimizer defaults for unet
-        optimization_options = FusionOptions("unet")
-        # The ORT optimizer is designed for ORT GPU and CUDA
-        # To make things work with ORT DirectML, we disable some options
-        # On by default in ORT optimizer, turned off because it has no effect
-        optimization_options.enable_qordered_matmul = False
-        # On by default in ORT optimizer, turned off as it causes performance issues
-        optimization_options.enable_nhwc_conv = False
-        optimizer = optimize_model(
-            input = unet_model_path,
-            model_type = "unet",
-            opt_level = 0,
-            optimization_options = optimization_options,
-            use_gpu = False,
-            only_onnxruntime = False
-        )
-        if fp16:
-            optimizer.convert_float_to_float16(
-                keep_io_types=True, disable_shape_infer=True, op_block_list=['RandomNormalLike']
-            )
-        optimizer.topological_sort()
-        unet=optimizer.model
-        del optimizer
-    else:
-        unet=onnx.load(unet_model_path)
-        
-    # clean up existing tensor files
-    shutil.rmtree(unet_dir)
-    os.mkdir(unet_dir)
-    # collate external tensor files into one
-    onnx.save_model(
-        unet,
-        unet_model_path,
-        save_as_external_data=True,
-        all_tensors_to_one_file=True,
-        location="weights.pb",
-        convert_attribute=False,
-    )
-    if fp16 and notune:
+        tune_model(unet_model_path, "unet", fp16)
+    elif fp16:
         convert_to_fp16(unet_model_path)
-    del unet
 
     # VAE ENCODER
     vae_encoder = pipeline.vae
@@ -392,6 +398,7 @@ def convert_models(pipeline: StableDiffusionPipeline,
     vae_decoder = pipeline.vae
     vae_latent_channels = vae_decoder.config.latent_channels
     vae_out_channels = vae_decoder.config.out_channels
+    vae_dec_path = output_path / "vae_decoder" / "model.onnx"
     # forward only through the decoder part
     vae_decoder.forward = vae_encoder.decode
     onnx_export(
@@ -401,7 +408,7 @@ def convert_models(pipeline: StableDiffusionPipeline,
                 unet_sample_size).to(device=device, dtype=dtype),
             False,
         ),
-        output_path=output_path / "vae_decoder" / "model.onnx",
+        output_path=vae_dec_path,
         ordered_input_names=["latent_sample", "return_dict"],
         output_names=["sample"],
         dynamic_axes={
@@ -409,6 +416,13 @@ def convert_models(pipeline: StableDiffusionPipeline,
         },
         opset=opset,
     )
+    
+    vae_dec_model_path = str(vae_dec_path.absolute().as_posix())
+    if not notune:
+        tune_model(vae_dec_model_path, "vae", fp16)
+    elif fp16:
+        convert_to_fp16(vae_dec_model_path)
+        
     del pipeline.vae
 
     # SAFETY CHECKER
@@ -424,7 +438,7 @@ def convert_models(pipeline: StableDiffusionPipeline,
         vae_encoder=OnnxRuntimeModel.from_pretrained(output_path / "vae_encoder",
             low_cpu_mem_usage=False),
         vae_decoder=OnnxRuntimeModel.from_pretrained(output_path / "vae_decoder",
-            low_cpu_mem_usage=False),
+            low_cpu_mem_usage=False, provider="DmlExecutionProvider"),
         text_encoder=OnnxRuntimeModel.from_pretrained(output_path / "text_encoder",
             low_cpu_mem_usage=False),
         tokenizer=pipeline.tokenizer,
@@ -520,7 +534,7 @@ if __name__ == "__main__":
         type=str,
         help=(
             "Attention slicing reduces VRAM needed, off by default. Set to auto or max. "
-            "WARNING: max implies --notune"
+            "WARNING: slows down generation, only max will give a significant VRAM reduction"
         )
     )
 
@@ -642,15 +656,13 @@ if __name__ == "__main__":
             pl = StableDiffusionPipeline.from_pretrained(tmpdirname,
                 torch_dtype=dtype,low_cpu_mem_usage=False).to(device)
 
-    # Enabling legacy Attention Processor allows tuning to convert it into MultiHeadAttention for RDNA3
-    pl.unet.set_attn_processor(AttnProcessor())
-
-    blocktune=False
     if args.attention_slicing:
-        if args.attention_slicing == "max":
-            blocktune=True
-            print ("WARNING: attention_slicing max implies --notune")
+        blocktune=True
         pl.enable_attention_slicing(args.attention_slicing)
+    else:
+        blocktune=False
+        # Enabling legacy Attention Processor allows tuning to convert it into MultiHeadAttention
+        pl.unet.set_attn_processor(AttnProcessor())
 
     if args.diffusers_output:
         pl.save_pretrained(args.diffusers_output)
