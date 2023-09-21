@@ -5,8 +5,8 @@ This was mainly intended for use with AMD GPUs but should work just as well with
 I'd be very interested to hear of any results with Intel Arc.  
 
 **MOST IMPORTANT RECENT UPDATES:**  
-**- ONNX Runtime 1.15 has been released! Updated model tuning code to better align with ORT.**  
-**- Realigned with latest version of diffusers, we were forced to switch to torch 2.1 nightly! (Install instructions updated accordingly)**  
+**- ONNX Runtime 1.16 has been released! Regression testing looks fine except for ControlNet. Looking into it.**  
+**- We were are still on torch 2 nightly as 2.0 does not include everything we need.**  
 **- I have enabled GitHub discussions: If you have a generic question rather than an issue, start a discussion!**
 
 This focuses specifically on making it easy to get FP16 models. When using FP16, the VRAM footprint is significantly reduced and speed goes up.
