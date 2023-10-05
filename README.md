@@ -5,6 +5,7 @@ This was mainly intended for use with AMD GPUs but should work just as well with
 I'd be very interested to hear of any results with Intel Arc.  
 
 **MOST IMPORTANT RECENT UPDATES:**  
+**- Pytorch 2.1 is out! We no longer need to rely on torch nightly package.**  
 **- ONNX Runtime 1.16 has been released! Regression testing looks fine except for ControlNet. Looking into it.**  
 **- We were are still on torch 2 nightly as 2.0 does not include everything we need.**  
 **- I have enabled GitHub discussions: If you have a generic question rather than an issue, start a discussion!**
