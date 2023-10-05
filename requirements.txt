@@ -1,4 +1,5 @@
 protobuf < 4.0
+torch
 numpy
 transformers
 diffusers
