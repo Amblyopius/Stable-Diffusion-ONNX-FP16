@@ -618,7 +618,7 @@ if __name__ == "__main__":
     device = "cpu"
     if args.model_path.endswith(".ckpt") or args.model_path.endswith(".safetensors"):
         pl = download_from_original_stable_diffusion_ckpt(
-            checkpoint_path=args.model_path,
+            checkpoint_path_or_dict=args.model_path,
             original_config_file=args.ckpt_original_config_file,
             image_size=args.ckpt_image_size,
             prediction_type=args.ckpt_prediction_type,
